@@ -64,6 +64,10 @@ class BotScheduler:
         self.scheduler.shutdown()
 
     async def send_daily_scheduled_report(self):
+        if self.storage.get_setting("bot_paused") == "true":
+            logger.info("Bot auto-reports are paused. Skipping scheduled daily report.")
+            return
+
         if not config.REPORT_CHAT_ID:
             logger.warning("REPORT_CHAT_ID not configured; skipping daily report.")
             return
@@ -92,6 +96,10 @@ class BotScheduler:
             logger.error(f"Error sending scheduled daily report: {e}")
 
     async def send_monthly_scheduled_report(self):
+        if self.storage.get_setting("bot_paused") == "true":
+            logger.info("Bot auto-reports are paused. Skipping scheduled monthly report.")
+            return
+
         if not config.REPORT_CHAT_ID:
             logger.warning("REPORT_CHAT_ID not configured; skipping monthly report.")
             return

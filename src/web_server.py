@@ -56,7 +56,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy:wght@400;700&family=Kantumruy+Pro:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #070a12;
@@ -76,7 +76,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --text-dim: #64748b;
-            --font-km: 'Kantumruy Pro', sans-serif;
+            --font-km: 'Kantumruy Pro', 'Kantumruy', sans-serif;
             --font-en: 'Plus Jakarta Sans', sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
             --radius-lg: 16px;
@@ -395,11 +395,16 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         }
         .metric-val {
             font-size: 2.2rem;
-            font-weight: 800;
-            font-family: var(--font-en);
+            font-weight: 700;
+            font-family: var(--font-km);
             color: #ffffff;
             line-height: 1.1;
             margin-bottom: 8px;
+        }
+        #m-today-total,
+        #m-monthly-total {
+            font-family: var(--font-km);
+            font-weight: 700;
         }
         .metric-sub {
             font-size: 0.8rem;
@@ -450,8 +455,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         }
         .status-chip-num {
             font-size: 1.2rem;
-            font-weight: 800;
-            font-family: var(--font-en);
+            font-weight: 700;
+            font-family: var(--font-km);
         }
 
         /* Section Container */
@@ -1208,6 +1213,19 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       <symbol id="icon-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
       </symbol>
+      <symbol id="icon-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="4" width="4" height="16"/>
+        <rect x="14" y="4" width="4" height="16"/>
+      </symbol>
+      <symbol id="icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="5 3 19 12 5 21 5 3"/>
+      </symbol>
+      <symbol id="icon-rocket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+        <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+        <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+        <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+      </symbol>
     </svg>
 
     <!-- Header -->
@@ -1222,14 +1240,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             </div>
         </a>
         <div class="header-actions">
-            <button id="btn-pwa-install" class="btn btn-secondary btn-sm" onclick="triggerPwaInstall()" style="display: none; padding: 0.4rem 0.75rem; border-color: rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.1);">
-                <svg class="icon icon-sm" style="color: #38bdf8;"><use href="#icon-download"></use></svg>
-                <span>ដំឡើង App</span>
-            </button>
-            <div class="status-pill">
-                <span class="pulse-dot"></span>
-                <span>Online</span>
+            <div id="header-status-pill" class="status-pill">
+                <span id="header-pulse-dot" class="pulse-dot"></span>
+                <span id="header-status-text">Online</span>
             </div>
+            <button id="header-pause-btn" class="btn btn-secondary btn-sm" onclick="togglePauseResume()" style="padding: 0.35rem 0.75rem; font-size: 0.78rem;">
+                <svg class="icon icon-sm"><use id="header-pause-icon" href="#icon-pause"></use></svg>
+                <span id="header-pause-text">ផ្អាក</span>
+            </button>
             <a href="https://web.telegram.org/" target="_blank" class="btn-tg">
                 <svg class="icon icon-sm"><use href="#icon-telegram"></use></svg>
                 <span>Telegram</span>
@@ -1247,7 +1265,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 </div>
                 <div class="pwa-banner-text">
                     <div class="pwa-banner-title">ដំឡើង App លើទូរស័ព្ទ</div>
-                    <div class="pwa-banner-sub">ប្រើប្រាស់ដូច Native App លឿន ពេញអេក្រង់</div>
                 </div>
             </div>
             <button class="btn btn-primary btn-sm" onclick="triggerPwaInstall()" style="flex-shrink: 0;">
@@ -1329,7 +1346,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                             <span class="status-chip-num" id="chip-drp">0</span>
                         </div>
                     </div>
-                    <div class="metric-sub" style="margin-top: 8px; color: #94a3b8; font-size: 0.74rem;">ទិន្នន័យពី Part 2 -Registrations</div>
                 </div>
 
                 <!-- Card 3: Monthly Total -->
@@ -1368,17 +1384,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 <div class="banner-content">
                     <div class="banner-title">
                         <svg class="icon icon-md" style="color: #60a5fa;"><use href="#icon-file-text"></use></svg>
-                        <span>របាយការណ៍ PDF ប្រចាំខែ (Monthly PDF)</span>
-                    </div>
-                    <div class="banner-sub">
-                        ទម្រង់តារាងស្អាតគ្មានក្បាល/កន្ទុយទំព័រ បង្កើតនិងផ្ញើបានលឿនទាន់ចិត្ត។
+                        <span>របាយការណ៍ប្រចាំខែ</span>
                     </div>
                 </div>
                 <div class="banner-actions">
-                    <a href="/api/download-monthly-pdf" target="_blank" class="btn btn-secondary">
-                        <svg class="icon icon-sm"><use href="#icon-download"></use></svg>
-                        <span>Download មើល</span>
-                    </a>
                     <button class="btn btn-primary" onclick="triggerAction('send-monthly')">
                         <svg class="icon icon-sm"><use href="#icon-send"></use></svg>
                         <span>ផ្ញើ PDF ទៅ Telegram</span>
@@ -1472,10 +1481,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                         </div>
                     </div>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button class="btn btn-secondary" type="button" onclick="previewDailyDate()">
-                            <svg class="icon icon-sm"><use href="#icon-eye"></use></svg>
-                            <span>មើល Preview</span>
-                        </button>
                         <button class="btn btn-primary" type="button" onclick="sendDailyBySelectedDate()">
                             <svg class="icon icon-sm"><use href="#icon-send"></use></svg>
                             <span>ផ្ញើទៅ Telegram ភ្លាមៗ</span>
@@ -1516,7 +1521,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                                 <svg class="icon icon-sm" style="color: #38bdf8;"><use href="#icon-calendar"></use></svg>
                                 <span>ផ្ញើរបាយការណ៍ប្រចាំថ្ងៃ</span>
                             </div>
-                            <div class="action-desc">បង្កើត និងផ្ញើរបាយការណ៍ស្ថិតិថ្ងៃនេះចូល Telegram Group ភ្លាមៗ (ដូចម៉ោង 17:00 / 5:00 PM)។</div>
+                            <div class="action-desc">បង្កើត និងផ្ញើរបាយការណ៍ស្ថិតិថ្ងៃនេះចូល Telegram Group ភ្លាមៗ។</div>
                         </div>
                         <button class="btn btn-primary" onclick="triggerAction('send-daily')">
                             <svg class="icon icon-sm"><use href="#icon-send"></use></svg>
@@ -1528,20 +1533,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                         <div>
                             <div class="action-title">
                                 <svg class="icon icon-sm" style="color: #34d399;"><use href="#icon-file-text"></use></svg>
-                                <span>ផ្ញើ PDF ប្រចាំខែ</span>
+                                <span>ផ្ញើរបាយការណ៍ប្រចាំខែ</span>
                             </div>
-                            <div class="action-desc">បង្កើតឯកសារ PDF តារាងស្អាត គ្មាន Header/Footer រួចផ្ញើចូល Telegram Group ភ្លាមៗ។</div>
+                            <div class="action-desc">បង្កើតឯកសារ PDF តារាងស្អាត រួចផ្ញើចូល Telegram Group ភ្លាមៗ។</div>
                         </div>
-                        <div style="display: flex; gap: 8px;">
-                            <a href="/api/download-monthly-pdf" target="_blank" class="btn btn-secondary btn-sm" style="padding: 10px 14px;">
-                                <svg class="icon icon-sm"><use href="#icon-download"></use></svg>
-                                <span>មើល</span>
-                            </a>
-                            <button class="btn btn-success" onclick="triggerAction('send-monthly')" style="flex: 1;">
-                                <svg class="icon icon-sm"><use href="#icon-send"></use></svg>
-                                <span>ផ្ញើ PDF ឥឡូវនេះ</span>
-                            </button>
-                        </div>
+                        <button class="btn btn-success" onclick="triggerAction('send-monthly')">
+                            <svg class="icon icon-sm"><use href="#icon-send"></use></svg>
+                            <span>ផ្ញើ PDF ឥឡូវនេះ</span>
+                        </button>
                     </div>
 
                     <div class="action-card">
@@ -1564,7 +1563,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                                 <svg class="icon icon-sm" style="color: #a78bfa;"><use href="#icon-bell"></use></svg>
                                 <span>ផ្ញើសារសាកល្បង</span>
                             </div>
-                            <div class="action-desc">ផ្ញើសារសាកល្បងទៅកាន់ Telegram Chat ID ដើម្បីផ្ទៀងផ្ទាត់ការតភ្ជាប់។</div>
+                            <div class="action-desc">ផ្ញើសារសាកល្បងទៅកាន់ Telegram ដើម្បីផ្ទៀងផ្ទាត់ការតភ្ជាប់។</div>
                         </div>
                         <button class="btn btn-secondary" onclick="triggerAction('test-message')">
                             <svg class="icon icon-sm"><use href="#icon-send"></use></svg>
@@ -1578,7 +1577,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                                 <svg class="icon icon-sm" style="color: #34d399;"><use href="#icon-users"></use></svg>
                                 <span>តេស្ត Alert ចុះឈ្មោះថ្មី (Part 2)</span>
                             </div>
-                            <div class="action-desc">ផ្ញើសារសាកល្បងដំណឹងចុះឈ្មោះថ្មី (ឈ្មោះ, ឡាតាំង, ភេទ, លេខទូរស័ព្ទ, ទីកន្លែងកំណើត, ជំនាញ) ទៅ Telegram។</div>
+                            <div class="action-desc">ផ្ញើសារសាកល្បងដំណឹងចុះឈ្មោះថ្មីទៅ Telegram។</div>
                         </div>
                         <button class="btn btn-secondary" onclick="triggerAction('test-reg-alert')">
                             <svg class="icon icon-sm"><use href="#icon-send"></use></svg>
@@ -1906,6 +1905,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 const res = await fetch('/api/stats');
                 const data = await res.json();
                 if (data.status === 'ok') {
+                    if (data.is_paused !== undefined) {
+                        updatePausedStateUI(data.is_paused);
+                    }
                     const today = data.today;
                     const hist = data.historical;
 
@@ -2004,6 +2006,71 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     const resData = await res.json();
                     if (resData.status === 'ok') {
                         showToast(resData.message || 'បានបញ្ជាដោយជោគជ័យ!');
+                    } else {
+                        showToast('បរាជ័យ៖ ' + (resData.error || 'មានបញ្ហា'), true);
+                    }
+                } catch (e) {
+                    showToast('បរាជ័យក្នុងការតភ្ជាប់៖ ' + e, true);
+                }
+            });
+        }
+
+        let isBotPaused = false;
+
+        function updatePausedStateUI(isPaused) {
+            isBotPaused = !!isPaused;
+
+            // Update Header Status Pill and Button
+            const pill = document.getElementById('header-status-pill');
+            const dot = document.getElementById('header-pulse-dot');
+            const txt = document.getElementById('header-status-text');
+            const pIcon = document.getElementById('header-pause-icon');
+            const pTxt = document.getElementById('header-pause-text');
+            const pBtn = document.getElementById('header-pause-btn');
+
+            if (pill && txt) {
+                if (isBotPaused) {
+                    pill.style.background = 'rgba(245, 158, 11, 0.15)';
+                    pill.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+                    pill.style.color = '#fbbf24';
+                    if (dot) {
+                        dot.style.background = '#f59e0b';
+                        dot.style.boxShadow = '0 0 8px rgba(245, 158, 11, 0.6)';
+                    }
+                    txt.innerText = 'ផ្អាក (Paused)';
+                    if (pIcon) pIcon.setAttribute('href', '#icon-play');
+                    if (pTxt) pTxt.innerText = 'បន្ត';
+                    if (pBtn) pBtn.className = 'btn btn-success btn-sm';
+                } else {
+                    pill.style.background = 'rgba(16, 185, 129, 0.12)';
+                    pill.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                    pill.style.color = '#34d399';
+                    if (dot) {
+                        dot.style.background = '#10b981';
+                        dot.style.boxShadow = '0 0 8px rgba(16, 185, 129, 0.6)';
+                    }
+                    txt.innerText = 'Online';
+                    if (pIcon) pIcon.setAttribute('href', '#icon-pause');
+                    if (pTxt) pTxt.innerText = 'ផ្អាក';
+                    if (pBtn) pBtn.className = 'btn btn-secondary btn-sm';
+                }
+            }
+        }
+
+        function togglePauseResume() {
+            const action = isBotPaused ? 'resume' : 'pause';
+            const actionKh = isBotPaused ? 'បន្តដំណើរការ' : 'ផ្អាក';
+            promptPin(async (pin) => {
+                showToast('កំពុងដំណើរការ ' + actionKh + ' Bot...');
+                try {
+                    const res = await fetch('/api/actions/' + action, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Admin-PIN': pin }
+                    });
+                    const resData = await res.json();
+                    if (resData.status === 'ok') {
+                        updatePausedStateUI(resData.is_paused);
+                        showToast(resData.message || (resData.is_paused ? 'បានផ្អាក Bot ជោគជ័យ!' : 'Bot បានបន្តដំណើរការវិញហើយ!'));
                     } else {
                         showToast('បរាជ័យ៖ ' + (resData.error || 'មានបញ្ហា'), true);
                     }
@@ -2221,8 +2288,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPwaPrompt = e;
-            const btn = document.getElementById('btn-pwa-install');
-            if (btn) btn.style.display = 'inline-flex';
             const banner = document.getElementById('mobile-pwa-banner');
             if (banner && !isStandalone) banner.style.display = 'flex';
             const nativeBtn = document.getElementById('pwa-native-install-btn');
@@ -2231,8 +2296,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
         window.addEventListener('appinstalled', () => {
             showToast('🎉 បានដំឡើង App លើទូរស័ព្ទបានជោគជ័យ!');
-            const btn = document.getElementById('btn-pwa-install');
-            if (btn) btn.style.display = 'none';
             const banner = document.getElementById('mobile-pwa-banner');
             if (banner) banner.style.display = 'none';
             deferredPwaPrompt = null;
@@ -2271,11 +2334,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             if (m) m.classList.remove('active');
         }
 
-        // Show install button and banner if mobile browser and not standalone
+        // Show banner if mobile browser and not standalone
         if (!isStandalone) {
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-            const btn = document.getElementById('btn-pwa-install');
-            if (btn) btn.style.display = 'inline-flex';
             if (isMobile) {
                 setTimeout(() => {
                     const banner = document.getElementById('mobile-pwa-banner');
@@ -2314,6 +2375,9 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             encoded = DASHBOARD_HTML.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
             self.send_header("Content-Length", str(len(encoded)))
             self.end_headers()
             self.wfile.write(encoded)
@@ -2435,6 +2499,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
 
                 self.send_json({
                     "status": "ok",
+                    "is_paused": (storage.get_setting("bot_paused") == "true"),
                     "today": {
                         "date_str": today_data.date_str,
                         "grand_total": today_data.grand_total,
@@ -2621,17 +2686,37 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 self.send_json({"status": "error", "error": str(e)}, status=500)
             return
 
+        if self.path == "/api/actions/pause":
+            try:
+                storage.set_setting("bot_paused", "true")
+                if WATCHER_INSTANCE:
+                    WATCHER_INSTANCE.pause()
+                self.send_json({"status": "ok", "is_paused": True, "message": "Bot alerts and schedules paused successfully!"})
+            except Exception as e:
+                self.send_json({"status": "error", "error": str(e)}, status=500)
+            return
+
+        if self.path == "/api/actions/resume":
+            try:
+                storage.set_setting("bot_paused", "false")
+                if WATCHER_INSTANCE:
+                    WATCHER_INSTANCE.resume()
+                self.send_json({"status": "ok", "is_paused": False, "message": "Bot alerts and schedules resumed successfully!"})
+            except Exception as e:
+                self.send_json({"status": "error", "error": str(e)}, status=500)
+            return
+
         if self.path == "/api/actions/force-sync":
             if not WATCHER_INSTANCE:
                 self.send_json({"status": "error", "error": "Watcher not running"}, status=503)
                 return
             try:
                 async def _sync_all():
-                    await WATCHER_INSTANCE.check_for_changes()
-                    await WATCHER_INSTANCE.check_for_new_registrations()
+                    await WATCHER_INSTANCE.check_for_changes(is_manual=True)
+                    await WATCHER_INSTANCE.check_for_new_registrations(is_manual=True)
                 future = run_async_coro(_sync_all())
                 future.result(timeout=25)
-                self.send_json({"status": "ok", "message": "Sheet sync and registration check completed successfully!"})
+                self.send_json({"status": "ok", "message": "Sheet sync and registration push completed successfully!"})
             except Exception as e:
                 self.send_json({"status": "error", "error": str(e)}, status=500)
             return

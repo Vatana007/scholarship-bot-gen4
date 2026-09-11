@@ -11,6 +11,17 @@ class ChangeWatcher:
         self.sheets_client = sheets_client
         self.storage = storage
         self.is_running = False
+        self.is_paused = (self.storage.get_setting("bot_paused") == "true")
+
+    def pause(self):
+        self.is_paused = True
+        self.storage.set_setting("bot_paused", "true")
+        logger.info("Bot alerts and watcher PAUSED.")
+
+    def resume(self):
+        self.is_paused = False
+        self.storage.set_setting("bot_paused", "false")
+        logger.info("Bot alerts and watcher RESUMED.")
 
     async def start(self):
         self.is_running = True
@@ -60,7 +71,9 @@ class ChangeWatcher:
     def stop(self):
         self.is_running = False
 
-    async def check_for_changes(self):
+    async def check_for_changes(self, is_manual: bool = False):
+        if not is_manual and self.is_paused:
+            return
         if not REPORT_CHAT_ID:
             return
 
@@ -124,11 +137,13 @@ class ChangeWatcher:
         except Exception as e:
             logger.error(f"Error checking for changes: {e}")
 
-    async def check_for_new_registrations(self):
+    async def check_for_new_registrations(self, is_manual: bool = False):
         """
         Monitors 'Part 2 -Registrations' sheet.
         When new students (new names/keys) are detected, sends an instant alert to Telegram.
         """
+        if not is_manual and self.is_paused:
+            return
         if not REPORT_CHAT_ID or not self.bot:
             return
 
