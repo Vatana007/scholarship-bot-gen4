@@ -1,0 +1,244 @@
+import os
+import shutil
+import subprocess
+from datetime import datetime
+from src.config import DATA_DIR, TIMEZONE, logger
+from src.parser import HistoricalReportData
+from src.report_builder import KHMER_MONTHS, to_khmer_num
+
+def find_chromium_binary() -> str | None:
+    """Finds installed Chrome or Edge binary for headless PDF printing."""
+    candidates = [
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        shutil.which("msedge"),
+        shutil.which("google-chrome"),
+        shutil.which("chromium"),
+        shutil.which("chromium-browser")
+    ]
+    for path in candidates:
+        if path and os.path.exists(path):
+            return path
+    return None
+
+def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None, target_year: int = None) -> str:
+    now = datetime.now(TIMEZONE)
+    month = target_month or now.month
+    year = target_year or now.year
+    month_name = KHMER_MONTHS.get(month, f"ខែ {month}")
+    
+    # Calculate sources totals
+    source_keys = ["E-School", "ក្រសួងអប់រំ", "បងប្អូន", "DUC"]
+    source_totals = {s: 0 for s in source_keys}
+    
+    rows_html = ""
+    # Sort categories with highest registrations first
+    sorted_cats = sorted(hist_data.categories, key=lambda c: c.registered, reverse=True)
+    
+    for idx, cat in enumerate(sorted_cats, 1):
+        s_counts = [cat.sources.get(s, 0) for s in source_keys]
+        for s, cnt in zip(source_keys, s_counts):
+            source_totals[s] += cnt
+            
+        highlight = "style='background-color: #f8fafc;'" if cat.registered > 0 else ""
+        num_style = "font-weight: 700; color: #1e3a8a;" if cat.registered > 0 else "color: #94a3b8;"
+        female_style = "font-weight: 700; color: #be185d;" if cat.female > 0 else "color: #94a3b8;"
+        
+        rows_html += f"""
+        <tr {highlight}>
+            <td style="text-align: center; color: #64748b;">{idx}</td>
+            <td class="major-name">{cat.name}</td>
+            <td style="{num_style}">{cat.registered}</td>
+            <td style="{female_style}">{cat.female}</td>
+            <td>{s_counts[0]}</td>
+            <td>{s_counts[1]}</td>
+            <td>{s_counts[2]}</td>
+            <td>{s_counts[3]}</td>
+        </tr>
+        """
+        
+    date_str_kh = f"ថ្ងៃទី {to_khmer_num(now.day)} ខែ{month_name} ឆ្នាំ {to_khmer_num(year)}"
+
+    html = f"""<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <title>របាយការណ៍ប្រចាំខែ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Moul&display=swap" rel="stylesheet">
+    <style>
+        @page {{
+            size: A4 portrait;
+            margin: 12mm 12mm;
+        }}
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            font-family: 'Kantumruy Pro', sans-serif;
+            background: #ffffff;
+            color: #1e293b;
+            padding: 10px;
+        }}
+        .header {{
+            text-align: center;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #1e3a8a;
+            padding-bottom: 12px;
+        }}
+        .title {{
+            font-family: 'Moul', 'Kantumruy Pro', cursive;
+            font-size: 22px;
+            color: #1e3a8a;
+            margin-bottom: 6px;
+        }}
+        .subtitle {{
+            font-size: 13px;
+            color: #475569;
+            font-weight: 600;
+        }}
+        .meta-info {{
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 10px;
+            color: #334155;
+            font-weight: 600;
+        }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }}
+        th, td {{
+            border: 1px solid #334155;
+            padding: 5px 6px;
+            text-align: center;
+        }}
+        th {{
+            background-color: #f1f5f9;
+            color: #0f172a;
+            font-weight: 700;
+        }}
+        .th-source {{
+            background-color: #e2e8f0;
+            color: #1e293b;
+        }}
+        td.major-name {{
+            text-align: left;
+            font-weight: 600;
+            padding-left: 8px;
+        }}
+        .total-row td {{
+            font-weight: 700;
+            background-color: #e0f2fe;
+            color: #0369a1;
+            font-size: 12px;
+        }}
+        .footer-signatures {{
+            margin-top: 25px;
+            display: flex;
+            justify-content: flex-end;
+            text-align: center;
+            font-size: 12px;
+            color: #1e293b;
+        }}
+        .sig-box {{
+            width: 250px;
+        }}
+        .sig-space {{
+            height: 50px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">របាយការណ៍ប្រចាំខែ</div>
+        <div class="subtitle">ស្ថិតិសិស្ស-និស្សិតចុះឈ្មោះស្នើសុំអាហារូបករណ៍ • ខែ{month_name} ឆ្នាំ{to_khmer_num(year)}</div>
+    </div>
+
+    <div class="meta-info">
+        <div>📊 កាលបរិច្ឆេទរបាយការណ៍៖ <b>{date_str_kh}</b></div>
+        <div>👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{hist_data.grand_total} នាក់</b> (ស្រី <b>{hist_data.total_female}</b> នាក់)</div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th rowspan="2" style="width: 5%;">ល.រ</th>
+                <th rowspan="2" style="width: 35%;">ជំនាញ</th>
+                <th rowspan="2" style="width: 12%; background-color: #dbeafe; color: #1e40af;">ចំនួនសរុប</th>
+                <th rowspan="2" style="width: 10%; background-color: #fce7f3; color: #9d174d;">ស្រី</th>
+                <th colspan="4" class="th-source">ប្រភព (Sources)</th>
+            </tr>
+            <tr>
+                <th style="width: 9.5%;">E-School</th>
+                <th style="width: 9.5%;">ក្រសួងអប់រំ</th>
+                <th style="width: 9.5%;">បងប្អូន</th>
+                <th style="width: 9.5%;">DUC</th>
+            </tr>
+        </thead>
+        <tbody>
+            {rows_html}
+            <tr class="total-row">
+                <td colspan="2" style="text-align: center; font-size: 12px;">សរុបទាំងអស់ (Grand Total)</td>
+                <td style="font-size: 13px; font-weight: 800;">{hist_data.grand_total}</td>
+                <td style="font-size: 13px; font-weight: 800; color: #be185d;">{hist_data.total_female}</td>
+                <td>{source_totals['E-School']}</td>
+                <td>{source_totals['ក្រសួងអប់រំ']}</td>
+                <td>{source_totals['បងប្អូន']}</td>
+                <td>{source_totals['DUC']}</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>
+"""
+    return html
+
+def generate_monthly_report_pdf(hist_data: HistoricalReportData, target_month: int = None, target_year: int = None, force_refresh: bool = False) -> str:
+    """
+    Generates an official PDF report matching the user's layout sketch without headers or footers,
+    with fast caching and returns the absolute file path to the generated PDF.
+    """
+    import time
+    now = datetime.now(TIMEZONE)
+    month = target_month or now.month
+    year = target_year or now.year
+
+    pdf_filename = f"Monthly_Report_{year}_{month:02d}.pdf"
+    pdf_path = os.path.join(DATA_DIR, pdf_filename)
+    html_path = os.path.join(DATA_DIR, f"temp_report_{year}_{month:02d}.html")
+
+    # Fast caching check (within 3 minutes)
+    if not force_refresh and os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 1000:
+        file_age = time.time() - os.path.getmtime(pdf_path)
+        if file_age < 180:  # 3 minutes
+            logger.info(f"Using cached Monthly Report PDF ({file_age:.1f}s old): {pdf_path}")
+            return pdf_path
+
+    html_content = build_monthly_html(hist_data, month, year)
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    browser_bin = find_chromium_binary()
+    if not browser_bin:
+        raise RuntimeError("No Chrome/Edge browser found to render PDF.")
+
+    cmd = [
+        browser_bin,
+        "--headless",
+        "--disable-gpu",
+        "--no-pdf-header-footer",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-extensions",
+        f"--print-to-pdf={pdf_path}",
+        html_path
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, timeout=20)
+    if result.returncode != 0 or not os.path.exists(pdf_path):
+        raise RuntimeError(f"Browser PDF generation failed (exit code {result.returncode}): {result.stderr.decode(errors='ignore')}")
+
+    logger.info(f"Generated Monthly Report PDF (no headers/footers) successfully: {pdf_path} ({os.path.getsize(pdf_path)} bytes)")
+    return pdf_path

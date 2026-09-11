@@ -1,0 +1,21 @@
+# Environment and Secrets
+.env
+credentials/*.json
+!credentials/service_account.json.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Data & SQLite
+data/*.db
+data/*.sqlite
+data/*.json
+
+# Logs
+logs/
+*.log
