@@ -12,6 +12,7 @@ class CategoryItem:
     returned: int = 0
     dropped: int = 0
     female: int = 0
+    female_dropped: int = 0
     sources: dict[str, int] = field(default_factory=dict)
 
 @dataclass
@@ -36,6 +37,7 @@ class HistoricalReportData:
     total_arrived: int
     total_dropped: int
     total_female: int = 0
+    total_female_dropped: int = 0
 
 def parse_int_safe(val: str, default: int = 0) -> int:
     if not val:
@@ -270,21 +272,28 @@ def parse_historical_sheet(rows: list[list[str]], reg_rows: list[list[str]] = No
     if len(rows[0]) > 8 and rows[0][8].strip():
         title = rows[0][8].strip()
 
-    # Calculate female and dropped counts per skill from 'Part 2 -Registrations'
+    # Calculate female, dropped, and female_dropped counts per skill from 'Part 2 -Registrations'
     female_by_skill = {}
     dropped_by_skill = {}
+    female_dropped_by_skill = {}
     total_female = 0
+    total_female_dropped = 0
     if reg_rows:
         students = parse_student_registrations(reg_rows)
         for s in students:
             g = s.get("gender", "").strip()
             sk = s.get("skill", "").strip()
             st = s.get("status", "").strip()
-            if g == "ស្រី":
+            is_female = (g == "ស្រី")
+            is_dropped = ("បោះបង់" in st)
+            if is_female:
                 female_by_skill[sk] = female_by_skill.get(sk, 0) + 1
                 total_female += 1
-            if "បោះបង់" in st:
+            if is_dropped:
                 dropped_by_skill[sk] = dropped_by_skill.get(sk, 0) + 1
+            if is_female and is_dropped:
+                female_dropped_by_skill[sk] = female_dropped_by_skill.get(sk, 0) + 1
+                total_female_dropped += 1
 
     # Discover all date columns from Row 2
     dates = []
@@ -360,6 +369,14 @@ def parse_historical_sheet(rows: list[list[str]], reg_rows: list[list[str]] = No
                     cat_female = cnt
                     break
 
+        # Match female dropped count for this skill
+        cat_female_drp = female_dropped_by_skill.get(col0, 0)
+        if cat_female_drp == 0:
+            for sk, cnt in female_dropped_by_skill.items():
+                if sk and (sk in col0 or col0 in sk):
+                    cat_female_drp = cnt
+                    break
+
         categories.append(CategoryItem(
             name=col0,
             registered=final_reg,
@@ -367,6 +384,7 @@ def parse_historical_sheet(rows: list[list[str]], reg_rows: list[list[str]] = No
             returned=0,
             dropped=cat_dropped,
             female=cat_female,
+            female_dropped=cat_female_drp,
             sources=cat_sources
         ))
 
@@ -378,7 +396,8 @@ def parse_historical_sheet(rows: list[list[str]], reg_rows: list[list[str]] = No
         grand_total=grand_total,
         total_arrived=total_arrived,
         total_dropped=total_dropped,
-        total_female=total_female
+        total_female=total_female,
+        total_female_dropped=max(total_female_dropped, sum(c.female_dropped for c in categories))
     )
 
 def get_available_dates(h_rows: list[list[str]]) -> list[dict]:
