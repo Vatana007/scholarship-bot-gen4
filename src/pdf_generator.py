@@ -7,20 +7,52 @@ from src.parser import HistoricalReportData
 from src.report_builder import KHMER_MONTHS, to_khmer_num
 
 def find_chromium_binary() -> str | None:
-    """Finds installed Chrome or Edge binary for headless PDF printing."""
+    """Finds installed Chrome or Edge binary for headless PDF printing across Windows, Linux, and Cloud (Render)."""
+    # 1. Check explicit environment variables
+    for env_var in ["CHROME_BIN", "GOOGLE_CHROME_BIN", "CHROMIUM_PATH", "PUPPETEER_EXECUTABLE_PATH"]:
+        val = os.environ.get(env_var)
+        if val and os.path.exists(val):
+            return val
+
+    # 2. Check standard Linux/Docker & Windows candidate paths
     candidates = [
+        # Linux standard paths (Docker / Render / Ubuntu)
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+        "/opt/google/chrome/chrome",
+        "/opt/google/chrome/google-chrome",
+        "/opt/render/project/.render/chrome/opt/google/chrome/google-chrome",
+        # Windows standard paths
         r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
         r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
         r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-        shutil.which("msedge"),
-        shutil.which("google-chrome"),
+        # PATH lookups
         shutil.which("chromium"),
-        shutil.which("chromium-browser")
+        shutil.which("chromium-browser"),
+        shutil.which("google-chrome"),
+        shutil.which("google-chrome-stable"),
+        shutil.which("msedge"),
+        shutil.which("chrome"),
     ]
     for path in candidates:
         if path and os.path.exists(path):
             return path
+
+    # 3. Check Playwright cache if installed
+    import glob
+    home = os.path.expanduser("~")
+    pw_patterns = [
+        os.path.join(home, ".cache", "ms-playwright", "chromium-*", "chrome-linux", "chrome"),
+        os.path.join(home, "AppData", "Local", "ms-playwright", "chromium-*", "chrome-win", "chrome.exe"),
+    ]
+    for pattern in pw_patterns:
+        matches = glob.glob(pattern)
+        if matches and os.path.exists(matches[0]):
+            return matches[0]
+
     return None
 
 def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None, target_year: int = None) -> str:
@@ -232,12 +264,18 @@ def generate_monthly_report_pdf(hist_data: HistoricalReportData, target_month: i
 
     browser_bin = find_chromium_binary()
     if not browser_bin:
-        raise RuntimeError("No Chrome/Edge browser found to render PDF.")
+        raise RuntimeError(
+            "No Chrome/Chromium browser found to render PDF. "
+            "On Render, please deploy using Docker (Dockerfile) or install Chromium."
+        )
 
     cmd = [
         browser_bin,
         "--headless",
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
         "--disable-gpu",
+        "--disable-software-rasterizer",
         "--no-pdf-header-footer",
         "--no-first-run",
         "--no-default-browser-check",
@@ -246,9 +284,10 @@ def generate_monthly_report_pdf(hist_data: HistoricalReportData, target_month: i
         html_path
     ]
 
-    result = subprocess.run(cmd, capture_output=True, timeout=20)
+    result = subprocess.run(cmd, capture_output=True, timeout=25)
     if result.returncode != 0 or not os.path.exists(pdf_path):
-        raise RuntimeError(f"Browser PDF generation failed (exit code {result.returncode}): {result.stderr.decode(errors='ignore')}")
+        err_msg = result.stderr.decode(errors='ignore') if result.stderr else "Unknown error"
+        raise RuntimeError(f"Browser PDF generation failed (exit code {result.returncode}): {err_msg}")
 
     logger.info(f"Generated Monthly Report PDF (no headers/footers) successfully: {pdf_path} ({os.path.getsize(pdf_path)} bytes)")
     return pdf_path

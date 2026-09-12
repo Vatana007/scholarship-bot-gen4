@@ -53,21 +53,26 @@ Render ផ្ដល់សេវាកម្ម **Web Service** ដោយឥត�
 2. នៅ Dashboard ចុចប៊ូតុង **New +** ➔ ជ្រើសរើស **Web Service**
 3. ជ្រើសរើស Repository GitHub របស់ Bot ដែលទើប Push អម្បាញ់មិញ រួចចុច **Connect**
 
-### ជំហានទី ៣៖ កំណត់ការ Settings លើ Render
+### ជំហានទី ៣៖ កំណត់ការ Settings លើ Render (ណែនាំជ្រើសរើស Docker)
+> [!IMPORTANT]
+> ដោយសារតែ Bot របស់យើងមានមុខងារបង្កើត **ឯកសារ PDF ប្រចាំខែ (Monthly Report PDF)** ជាមួយនឹងពុម្ពអក្សរខ្មែរស្អាតឥតខ្ចោះ យើងត្រូវជ្រើសរើស **Docker** (Render គាំទ្រ Docker ដោយឥតគិតថ្លៃ 100% Free) ដើម្បីឱ្យ Render ដំឡើង Chromium និង Khmer Fonts ដោយស្វ័យប្រវត្តិ។
+
 បំពេញព័ត៌មានដូចខាងក្រោម៖
 - **Name**: ដាក់ឈ្មោះ Bot (ឧ. `scholarship-bot`)
-- **Region**: ជ្រើសរើស Singapore (ជិតប្រទេសកម្ពុជាបំផុត)
-- **Language**: `Python 3`
+- **Region**: ជ្រើសរើស `Singapore` (ជិតប្រទេសកម្ពុជាបំផុត)
+- **Language / Runtime**: ជ្រើសរើស **`Docker`** *(Render នឹងចាប់យក Dockerfile ក្នុងគម្រោងដោយស្វ័យប្រវត្តិ)*
 - **Branch**: `main`
-- **Build Command**:
-  ```bash
-  pip install -r requirements.txt
-  ```
-- **Start Command**:
-  ```bash
-  python -m src.main
-  ```
+- *(ចំណាំ៖ នៅពេលជ្រើស Docker មិនបាច់កំណត់ Build Command ឬ Start Command ឡើយ ព្រោះ Dockerfile បានរៀបចំស្រេច)*
 - **Instance Type**: ជ្រើសរើស **Free** ($0/month)
+
+> [!TIP]
+> **សម្រាប់សេវាដែលបានបង្កើតរួចហើយ (Changing existing Web Service to Docker)៖**
+> ប្រសិនបើលោកអ្នកធ្លាប់បានបង្កើត Web Service ជា `Python 3` រួចហើយ ហើយជួបបញ្ហា *No Chrome/Edge browser found*:
+> 1. ចូលទៅកាន់ Render Dashboard ➔ ចុចលើ Service របស់អ្នក
+> 2. ចុចចូលផ្ទាំង **Settings**
+> 3. ត្រង់កន្លែង **Runtime** ឬ **Environment** ➔ ប្តូរពី `Python 3` ទៅជា **`Docker`**
+> 4. ចុច **Save Changes** ➔ Render នឹងធ្វើការ Re-deploy ជាមួយ Chromium និងពុម្ពអក្សរខ្មែរភ្លាមៗ!
+
 
 ### ជំហានទី ៤៖ បញ្ចូល Environment Variables (Secrets)
 នៅផ្នែកខាងក្រោម ចុចលើ **Advanced** ➔ **Add Environment Variable** ហើយចម្លងតម្លៃពី `.env` មកដាក់៖
