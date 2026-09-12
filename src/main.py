@@ -92,6 +92,7 @@ async def monthly_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reg_rows = sheets_client.get_registrations_sheet_rows()
         hist_data = parse_historical_sheet(rows, reg_rows=reg_rows)
         pdf_path = generate_monthly_report_pdf(hist_data, force_refresh=True)
+        now = datetime.now(TIMEZONE)
         dropped_caption = f"បោះបង់ <b>{hist_data.total_dropped}</b> នាក់" if hist_data.total_dropped > 0 else ""
         female_caption = f"ស្រី <b>{hist_data.total_female}</b> នាក់" if hist_data.total_female > 0 else ""
         extra_parts = [p for p in [dropped_caption, female_caption] if p]
@@ -173,11 +174,14 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             hist_data = parse_historical_sheet(rows, reg_rows=reg_rows)
             pdf_path = generate_monthly_report_pdf(hist_data, force_refresh=True)
             now = datetime.now(TIMEZONE)
-            female_caption = f" (ស្រី <b>{hist_data.total_female}</b> នាក់)" if hist_data.total_female > 0 else ""
+            dropped_caption = f"បោះបង់ <b>{hist_data.total_dropped}</b> នាក់" if hist_data.total_dropped > 0 else ""
+            female_caption = f"ស្រី <b>{hist_data.total_female}</b> នាក់" if hist_data.total_female > 0 else ""
+            extra_parts = [p for p in [dropped_caption, female_caption] if p]
+            extra_str = f" ({' • '.join(extra_parts)})" if extra_parts else ""
             caption = (
                 f"📈 <b>របាយការណ៍ស្ថិតិប្រចាំខែ (Monthly Report PDF)</b>\n"
                 f"🗓 <b>ខែ{KHMER_MONTHS.get(now.month, 'កញ្ញា')} ឆ្នាំ {to_khmer_num(now.year)}</b>\n"
-                f"👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{hist_data.grand_total} នាក់</b>{female_caption}"
+                f"👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{hist_data.grand_total} នាក់</b>{extra_str}"
             )
             with open(pdf_path, "rb") as doc:
                 await query.message.reply_document(
@@ -239,6 +243,17 @@ async def post_init(application):
     init_web_context(application.bot, scheduler, watcher, loop)
     logger.info("Bot background jobs (Scheduler & Watcher) and Web Management initialized.")
 
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handles exceptions and gracefully suppresses transient deploy conflict errors."""
+    import telegram.error
+    if isinstance(context.error, telegram.error.Conflict):
+        logger.warning(
+            "Telegram polling conflict detected (temporary overlap during Render deploy). "
+            "Polling will resume automatically once previous container stops."
+        )
+        return
+    logger.error("Exception while handling an update:", exc_info=context.error)
+
 def main():
     if not BOT_TOKEN:
         logger.error("BOT_TOKEN is missing in .env! Please configure it.")
@@ -251,6 +266,7 @@ def main():
 
     app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
+    app.add_error_handler(error_handler)
     app.add_handler(CommandHandler(["start"], start_cmd))
     app.add_handler(CommandHandler(["today"], today_cmd))
     app.add_handler(CommandHandler(["report", "daily"], today_cmd))
@@ -266,7 +282,7 @@ def main():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-    app.run_polling()
+    app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
