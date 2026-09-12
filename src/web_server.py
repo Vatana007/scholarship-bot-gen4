@@ -2653,23 +2653,32 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                     pdf_path = generate_monthly_report_pdf(h_data, force_refresh=False)
                     grand_total = h_data.grand_total
                     female_total = h_data.total_female
+                    dropped_total = h_data.total_dropped
                     storage.set_setting("last_monthly_total", str(grand_total))
                     storage.set_setting("last_monthly_female", str(female_total))
+                    storage.set_setting("last_monthly_dropped", str(dropped_total))
                 else:
                     grand_total = storage.get_setting("last_monthly_total")
                     female_total = storage.get_setting("last_monthly_female")
+                    dropped_total = storage.get_setting("last_monthly_dropped")
                     if not grand_total:
                         h_rows = sheets_client.get_historical_sheet_rows()
                         reg_rows = sheets_client.get_registrations_sheet_rows()
                         h_data = parse_historical_sheet(h_rows, reg_rows=reg_rows)
                         grand_total = h_data.grand_total
                         female_total = h_data.total_female
+                        dropped_total = h_data.total_dropped
 
-                female_caption = f" (ស្រី <b>{female_total}</b> នាក់)" if female_total and str(female_total) != "0" else ""
+                extra_parts = []
+                if dropped_total and str(dropped_total) != "0":
+                    extra_parts.append(f"បោះបង់ <b>{dropped_total}</b> នាក់")
+                if female_total and str(female_total) != "0":
+                    extra_parts.append(f"ស្រី <b>{female_total}</b> នាក់")
+                extra_str = f" ({' • '.join(extra_parts)})" if extra_parts else ""
                 caption = (
                     f"📈 <b>របាយការណ៍ស្ថិតិប្រចាំខែ (Monthly Report PDF)</b>\n"
                     f"🗓 <b>ខែ{KHMER_MONTHS.get(now.month, 'កញ្ញា')} ឆ្នាំ {to_khmer_num(now.year)}</b>\n"
-                    f"👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{grand_total} នាក់</b>{female_caption}"
+                    f"👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{grand_total} នាក់</b>{extra_str}"
                 )
 
                 async def _send_m():

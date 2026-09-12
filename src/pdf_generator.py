@@ -44,6 +44,7 @@ def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None
             
         highlight = "style='background-color: #f8fafc;'" if cat.registered > 0 else ""
         num_style = "font-weight: 700; color: #1e3a8a;" if cat.registered > 0 else "color: #94a3b8;"
+        dropped_style = "font-weight: 700; color: #b91c1c;" if cat.dropped > 0 else "color: #94a3b8;"
         female_style = "font-weight: 700; color: #be185d;" if cat.female > 0 else "color: #94a3b8;"
         
         rows_html += f"""
@@ -51,6 +52,7 @@ def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None
             <td style="text-align: center; color: #64748b;">{idx}</td>
             <td class="major-name">{cat.name}</td>
             <td style="{num_style}">{cat.registered}</td>
+            <td style="{dropped_style}">{cat.dropped}</td>
             <td style="{female_style}">{cat.female}</td>
             <td>{s_counts[0]}</td>
             <td>{s_counts[1]}</td>
@@ -158,23 +160,24 @@ def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None
 
     <div class="meta-info">
         <div>📊 កាលបរិច្ឆេទរបាយការណ៍៖ <b>{date_str_kh}</b></div>
-        <div>👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{hist_data.grand_total} នាក់</b> (ស្រី <b>{hist_data.total_female}</b> នាក់)</div>
+        <div>👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{hist_data.grand_total} នាក់</b> (បោះបង់ <b>{hist_data.total_dropped}</b> នាក់ • ស្រី <b>{hist_data.total_female}</b> នាក់)</div>
     </div>
 
     <table>
         <thead>
             <tr>
                 <th rowspan="2" style="width: 5%;">ល.រ</th>
-                <th rowspan="2" style="width: 35%;">ជំនាញ</th>
+                <th rowspan="2" style="width: 33%;">ជំនាញ</th>
                 <th rowspan="2" style="width: 12%; background-color: #dbeafe; color: #1e40af;">ចំនួនសរុប</th>
-                <th rowspan="2" style="width: 10%; background-color: #fce7f3; color: #9d174d;">ស្រី</th>
+                <th rowspan="2" style="width: 9%; background-color: #fee2e2; color: #b91c1c;">បោះបង់</th>
+                <th rowspan="2" style="width: 9%; background-color: #fce7f3; color: #9d174d;">ស្រី</th>
                 <th colspan="4" class="th-source">ប្រភព (Sources)</th>
             </tr>
             <tr>
-                <th style="width: 9.5%;">E-School</th>
-                <th style="width: 9.5%;">ក្រសួងអប់រំ</th>
-                <th style="width: 9.5%;">បងប្អូន</th>
-                <th style="width: 9.5%;">DUC</th>
+                <th style="width: 8%;">E-School</th>
+                <th style="width: 8%;">ក្រសួងអប់រំ</th>
+                <th style="width: 8%;">បងប្អូន</th>
+                <th style="width: 8%;">DUC</th>
             </tr>
         </thead>
         <tbody>
@@ -182,6 +185,7 @@ def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None
             <tr class="total-row">
                 <td colspan="2" style="text-align: center; font-size: 12px;">សរុបទាំងអស់ (Grand Total)</td>
                 <td style="font-size: 13px; font-weight: 800;">{hist_data.grand_total}</td>
+                <td style="font-size: 13px; font-weight: 800; color: #b91c1c;">{hist_data.total_dropped}</td>
                 <td style="font-size: 13px; font-weight: 800; color: #be185d;">{hist_data.total_female}</td>
                 <td>{source_totals['E-School']}</td>
                 <td>{source_totals['ក្រសួងអប់រំ']}</td>

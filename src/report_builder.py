@@ -142,10 +142,13 @@ def format_monthly_report(hist_data: HistoricalReportData, target_month: int = N
                 badge = "🥈"
             elif idx == 2:
                 badge = "🥉"
-            else:
-                badge = "•"
-            female_str = f" (ស្រី: {cat.female} នាក់)" if cat.female > 0 else ""
-            lines.append(f"{badge} <b>{html.escape(cat.name)}</b>: <b>{cat.registered} នាក់</b>{female_str}")
+            extra_bits = []
+            if cat.dropped > 0:
+                extra_bits.append(f"បោះបង់: {cat.dropped}")
+            if cat.female > 0:
+                extra_bits.append(f"ស្រី: {cat.female}")
+            extra_str = f" ({', '.join(extra_bits)})" if extra_bits else ""
+            lines.append(f"{badge} <b>{html.escape(cat.name)}</b>: <b>{cat.registered} នាក់</b>{extra_str}")
 
     lines.append(DIVIDER)
     female_total_str = f" (ស្រី៖ <b>{hist_data.total_female} នាក់</b>)" if hist_data.total_female > 0 else ""

@@ -270,17 +270,21 @@ def parse_historical_sheet(rows: list[list[str]], reg_rows: list[list[str]] = No
     if len(rows[0]) > 8 and rows[0][8].strip():
         title = rows[0][8].strip()
 
-    # Calculate female counts per skill from 'Part 2 -Registrations'
+    # Calculate female and dropped counts per skill from 'Part 2 -Registrations'
     female_by_skill = {}
+    dropped_by_skill = {}
     total_female = 0
     if reg_rows:
         students = parse_student_registrations(reg_rows)
         for s in students:
             g = s.get("gender", "").strip()
             sk = s.get("skill", "").strip()
+            st = s.get("status", "").strip()
             if g == "ស្រី":
                 female_by_skill[sk] = female_by_skill.get(sk, 0) + 1
                 total_female += 1
+            if "បោះបង់" in st:
+                dropped_by_skill[sk] = dropped_by_skill.get(sk, 0) + 1
 
     # Discover all date columns from Row 2
     dates = []
@@ -338,6 +342,16 @@ def parse_historical_sheet(rows: list[list[str]], reg_rows: list[list[str]] = No
         total_arrived += arr_total
         total_dropped += drp_total
 
+        # Match dropped count for this skill
+        cat_dropped = drp_total
+        if col0 in dropped_by_skill:
+            cat_dropped = max(cat_dropped, dropped_by_skill[col0])
+        else:
+            for sk, cnt in dropped_by_skill.items():
+                if sk and (sk in col0 or col0 in sk):
+                    cat_dropped = max(cat_dropped, cnt)
+                    break
+
         # Match female count for this skill
         cat_female = female_by_skill.get(col0, 0)
         if cat_female == 0:
@@ -351,7 +365,7 @@ def parse_historical_sheet(rows: list[list[str]], reg_rows: list[list[str]] = No
             registered=final_reg,
             arrived=arr_total,
             returned=0,
-            dropped=drp_total,
+            dropped=cat_dropped,
             female=cat_female,
             sources=cat_sources
         ))

@@ -117,9 +117,11 @@ class BotScheduler:
             reg_rows = self.sheets_client.get_registrations_sheet_rows()
             hist_data = parse_historical_sheet(rows, reg_rows=reg_rows)
             pdf_path = generate_monthly_report_pdf(hist_data, force_refresh=True)
-            now = datetime.now(config.TIMEZONE)
-            female_caption = f" (ស្រី <b>{hist_data.total_female}</b> នាក់)" if hist_data.total_female > 0 else ""
-            caption = f"📈 <b>របាយការណ៍ស្ថិតិប្រចាំខែ (Monthly Report PDF)</b>\n🗓 <b>ខែ{KHMER_MONTHS.get(now.month, 'កញ្ញា')} ឆ្នាំ {to_khmer_num(now.year)}</b>\n👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{hist_data.grand_total} នាក់</b>{female_caption}"
+            dropped_caption = f"បោះបង់ <b>{hist_data.total_dropped}</b> នាក់" if hist_data.total_dropped > 0 else ""
+            female_caption = f"ស្រី <b>{hist_data.total_female}</b> នាក់" if hist_data.total_female > 0 else ""
+            extra_parts = [p for p in [dropped_caption, female_caption] if p]
+            extra_str = f" ({' • '.join(extra_parts)})" if extra_parts else ""
+            caption = f"📈 <b>របាយការណ៍ស្ថិតិប្រចាំខែ (Monthly Report PDF)</b>\n🗓 <b>ខែ{KHMER_MONTHS.get(now.month, 'កញ្ញា')} ឆ្នាំ {to_khmer_num(now.year)}</b>\n👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{hist_data.grand_total} នាក់</b>{extra_str}"
 
             with open(pdf_path, "rb") as doc:
                 msg = await self.bot.send_document(
