@@ -24,6 +24,8 @@ def find_chromium_binary() -> str | None:
         "/opt/google/chrome/chrome",
         "/opt/google/chrome/google-chrome",
         "/opt/render/project/.render/chrome/opt/google/chrome/google-chrome",
+        os.path.join(os.getcwd(), ".chrome", "opt", "google", "chrome", "google-chrome"),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".chrome", "opt", "google", "chrome", "google-chrome"),
         # Windows standard paths
         r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
         r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",

@@ -21,3 +21,6 @@ data/*.html
 # Logs
 logs/
 *.log
+
+# Cache & Chrome
+.chrome/
