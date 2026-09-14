@@ -271,25 +271,50 @@ def generate_monthly_report_pdf(hist_data: HistoricalReportData, target_month: i
             "On Render, please deploy using Docker (Dockerfile) or install Chromium."
         )
 
-    cmd = [
-        browser_bin,
-        "--headless",
+    import pathlib
+    file_uri = pathlib.Path(html_path).resolve().as_uri()
+    abs_pdf_path = os.path.abspath(pdf_path)
+
+    base_flags = [
         "--no-sandbox",
+        "--no-zygote",
         "--disable-dev-shm-usage",
         "--disable-gpu",
         "--disable-software-rasterizer",
-        "--no-pdf-header-footer",
+        "--disable-background-networking",
+        "--disable-default-apps",
+        "--disable-extensions",
+        "--disable-sync",
+        "--disable-translate",
         "--no-first-run",
         "--no-default-browser-check",
-        "--disable-extensions",
-        f"--print-to-pdf={pdf_path}",
-        html_path
+        "--hide-scrollbars",
+        "--mute-audio",
+        "--allow-file-access-from-files",
+        "--enable-local-file-accesses",
+        "--virtual-time-budget=4000",
+        "--no-pdf-header-footer",
+        f"--print-to-pdf={abs_pdf_path}",
+        file_uri
     ]
 
-    result = subprocess.run(cmd, capture_output=True, timeout=25)
-    if result.returncode != 0 or not os.path.exists(pdf_path):
-        err_msg = result.stderr.decode(errors='ignore') if result.stderr else "Unknown error"
-        raise RuntimeError(f"Browser PDF generation failed (exit code {result.returncode}): {err_msg}")
+    # Try modern headless mode first (--headless=new), with fallback to classic (--headless)
+    cmd_attempts = [
+        [browser_bin, "--headless=new"] + base_flags,
+        [browser_bin, "--headless"] + base_flags,
+    ]
 
-    logger.info(f"Generated Monthly Report PDF (no headers/footers) successfully: {pdf_path} ({os.path.getsize(pdf_path)} bytes)")
-    return pdf_path
+    last_error = "Unknown error"
+    for cmd in cmd_attempts:
+        try:
+            result = subprocess.run(cmd, capture_output=True, timeout=30)
+            if result.returncode == 0 and os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 1000:
+                logger.info(f"Generated Monthly Report PDF (no headers/footers) successfully: {pdf_path} ({os.path.getsize(pdf_path)} bytes)")
+                return pdf_path
+            last_error = result.stderr.decode(errors='ignore') if result.stderr else f"Browser returned exit code {result.returncode}"
+        except subprocess.TimeoutExpired:
+            last_error = "Browser command timed out after 30 seconds"
+        except Exception as e:
+            last_error = str(e)
+
+    raise RuntimeError(f"Browser PDF generation failed: {last_error}")
