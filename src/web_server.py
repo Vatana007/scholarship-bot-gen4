@@ -2437,6 +2437,50 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self.send_json({"status": "ok", "service": "telegram-bot"})
             return
 
+        if self.path == "/report/monthly":
+            try:
+                from src.pdf_generator import build_monthly_html
+                h_rows = sheets_client.get_historical_sheet_rows()
+                reg_rows = sheets_client.get_registrations_sheet_rows()
+                h_data = parse_historical_sheet(h_rows, reg_rows=reg_rows)
+                html_content = build_monthly_html(h_data)
+                encoded = html_content.encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(encoded)))
+                self.end_headers()
+                self.wfile.write(encoded)
+            except Exception as e:
+                self.send_json({"status": "error", "error": str(e)}, status=500)
+            return
+
+        if self.path == "/api/report/pdf":
+            try:
+                now = datetime.now(config.TIMEZONE)
+                pdf_filename = f"Monthly_Report_{now.year}_{now.month:02d}.pdf"
+                pdf_path = os.path.join(config.DATA_DIR, pdf_filename)
+                if not os.path.exists(pdf_path):
+                    from src.pdf_generator import generate_monthly_report_pdf
+                    h_rows = sheets_client.get_historical_sheet_rows()
+                    reg_rows = sheets_client.get_registrations_sheet_rows()
+                    h_data = parse_historical_sheet(h_rows, reg_rows=reg_rows)
+                    pdf_path = generate_monthly_report_pdf(h_data, force_refresh=True)
+
+                if os.path.exists(pdf_path):
+                    with open(pdf_path, "rb") as f:
+                        content = f.read()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/pdf")
+                    self.send_header("Content-Disposition", f'attachment; filename="{pdf_filename}"')
+                    self.send_header("Content-Length", str(len(content)))
+                    self.end_headers()
+                    self.wfile.write(content)
+                else:
+                    self.send_json({"status": "error", "error": "PDF not generated yet"}, status=404)
+            except Exception as e:
+                self.send_json({"status": "error", "error": str(e)}, status=500)
+            return
+
         if self.path == "/api/available-dates":
             try:
                 from src.parser import get_available_dates

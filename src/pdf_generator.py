@@ -110,9 +110,13 @@ def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None
             size: A4 portrait;
             margin: 12mm 12mm;
         }}
+        @media print {{
+            .no-print {{ display: none !important; }}
+            body {{ padding: 0 !important; }}
+        }}
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
         body {{
-            font-family: 'Kantumruy Pro', sans-serif;
+            font-family: 'Kantumruy Pro', 'Khmer OS Siemreap', sans-serif;
             background: #ffffff;
             color: #1e293b;
             padding: 10px;
@@ -189,6 +193,15 @@ def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None
     </style>
 </head>
 <body>
+    <div class="no-print" style="position: sticky; top: 0; background: #0f172a; color: white; padding: 10px 16px; margin: -10px -10px 16px -10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; border-radius: 0 0 8px 8px;">
+        <div style="font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+            <span>📈 របាយការណ៍ស្ថិតិប្រចាំខែ (Live Web View)</span>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="window.print()" style="background: #2563eb; color: white; border: none; padding: 7px 16px; border-radius: 6px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;">🖨️ បោះពុម្ព / Save as PDF</button>
+            <a href="/api/report/pdf" download style="background: #10b981; color: white; text-decoration: none; padding: 7px 16px; border-radius: 6px; font-family: inherit; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center;">📥 ទាញយក PDF</a>
+        </div>
+    </div>
     <div class="header">
         <div class="title">របាយការណ៍ប្រចាំខែ</div>
         <div class="subtitle">ស្ថិតិសិស្ស-និស្សិតចុះឈ្មោះស្នើសុំអាហារូបករណ៍ • ខែ{month_name} ឆ្នាំ{to_khmer_num(year)}</div>
@@ -277,23 +290,17 @@ def generate_monthly_report_pdf(hist_data: HistoricalReportData, target_month: i
 
     base_flags = [
         "--no-sandbox",
-        "--no-zygote",
         "--disable-dev-shm-usage",
         "--disable-gpu",
         "--disable-software-rasterizer",
-        "--disable-background-networking",
-        "--disable-default-apps",
-        "--disable-extensions",
-        "--disable-sync",
-        "--disable-translate",
+        "--no-pdf-header-footer",
         "--no-first-run",
         "--no-default-browser-check",
+        "--disable-extensions",
         "--hide-scrollbars",
         "--mute-audio",
         "--allow-file-access-from-files",
         "--enable-local-file-accesses",
-        "--virtual-time-budget=4000",
-        "--no-pdf-header-footer",
         f"--print-to-pdf={abs_pdf_path}",
         file_uri
     ]
@@ -301,19 +308,19 @@ def generate_monthly_report_pdf(hist_data: HistoricalReportData, target_month: i
     # Try modern headless mode first (--headless=new), with fallback to classic (--headless)
     cmd_attempts = [
         [browser_bin, "--headless=new"] + base_flags,
+        [browser_bin, "--headless"] + base_flags,
     ]
 
     last_error = "Unknown error"
     for cmd in cmd_attempts:
         try:
-            result = subprocess.run(cmd, capture_output=True, timeout=10)
+            result = subprocess.run(cmd, capture_output=True, timeout=35)
             if result.returncode == 0 and os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 1000:
                 logger.info(f"Generated Monthly Report PDF (no headers/footers) successfully: {pdf_path} ({os.path.getsize(pdf_path)} bytes)")
                 return pdf_path
             last_error = result.stderr.decode(errors='ignore') if result.stderr else f"Browser returned exit code {result.returncode}"
         except subprocess.TimeoutExpired:
-            last_error = "Browser command timed out after 10 seconds"
-            break
+            last_error = "Browser command timed out after 35 seconds"
         except Exception as e:
             last_error = str(e)
 
