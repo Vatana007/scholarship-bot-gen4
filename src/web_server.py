@@ -2643,64 +2643,73 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                     self.send_json({"status": "error", "error": "REPORT_CHAT_ID is not set"}, status=400)
                     return
 
-                import time
-                from src.pdf_generator import generate_monthly_report_pdf
-                from src.report_builder import KHMER_MONTHS, to_khmer_num
+                from src.report_builder import KHMER_MONTHS, to_khmer_num, format_monthly_report
                 now = datetime.now(TIMEZONE)
                 pdf_filename = f"Monthly_Report_{now.year}_{now.month:02d}.pdf"
                 pdf_path = os.path.join(config.DATA_DIR, pdf_filename)
 
-                if not (os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 1000 and (time.time() - os.path.getmtime(pdf_path) < 180)):
-                    h_rows = sheets_client.get_historical_sheet_rows()
-                    reg_rows = sheets_client.get_registrations_sheet_rows()
-                    h_data = parse_historical_sheet(h_rows, reg_rows=reg_rows)
+                h_rows = sheets_client.get_historical_sheet_rows()
+                reg_rows = sheets_client.get_registrations_sheet_rows()
+                h_data = parse_historical_sheet(h_rows, reg_rows=reg_rows)
+
+                # Try PDF generation first
+                pdf_generated = False
+                try:
+                    from src.pdf_generator import generate_monthly_report_pdf
                     pdf_path = generate_monthly_report_pdf(h_data, force_refresh=False)
+                    if os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 1000:
+                        pdf_generated = True
+                except Exception as pdf_err:
+                    logger.warning(f"Browser PDF generation failed/timed out: {pdf_err}. Falling back to formatted text report.")
+
+                if pdf_generated:
                     grand_total = h_data.grand_total
                     female_total = h_data.total_female
                     dropped_total = h_data.total_dropped
-                    storage.set_setting("last_monthly_total", str(grand_total))
-                    storage.set_setting("last_monthly_female", str(female_total))
-                    storage.set_setting("last_monthly_dropped", str(dropped_total))
+                    extra_parts = []
+                    if dropped_total and str(dropped_total) != "0":
+                        extra_parts.append(f"បោះបង់ <b>{dropped_total}</b> នាក់")
+                    if female_total and str(female_total) != "0":
+                        extra_parts.append(f"ស្រី <b>{female_total}</b> នាក់")
+                    extra_str = f" ({' • '.join(extra_parts)})" if extra_parts else ""
+                    caption = (
+                        f"📈 <b>របាយការណ៍ស្ថិតិប្រចាំខែ (Monthly Report PDF)</b>\n"
+                        f"🗓 <b>ខែ{KHMER_MONTHS.get(now.month, 'កញ្ញា')} ឆ្នាំ {to_khmer_num(now.year)}</b>\n"
+                        f"👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{grand_total} នាក់</b>{extra_str}"
+                    )
+
+                    async def _send_m():
+                        with open(pdf_path, "rb") as doc:
+                            msg = await BOT_INSTANCE.send_document(
+                                chat_id=chat_id,
+                                document=doc,
+                                filename=f"Monthly_Scholarship_Report_{now.year}_{now.month:02d}.pdf",
+                                caption=caption,
+                                parse_mode="HTML"
+                            )
+                        now_key = datetime.now(TIMEZONE).strftime("%Y-%m")
+                        storage.log_report_sent("MANUAL_MONTHLY_PDF", now_key, message_id=msg.message_id)
+                        return msg.message_id
+
+                    future = run_async_coro(_send_m())
+                    msg_id = future.result(timeout=20)
+                    self.send_json({"status": "ok", "message": f"Monthly PDF report sent successfully! (Message ID: {msg_id})"})
                 else:
-                    grand_total = storage.get_setting("last_monthly_total")
-                    female_total = storage.get_setting("last_monthly_female")
-                    dropped_total = storage.get_setting("last_monthly_dropped")
-                    if not grand_total:
-                        h_rows = sheets_client.get_historical_sheet_rows()
-                        reg_rows = sheets_client.get_registrations_sheet_rows()
-                        h_data = parse_historical_sheet(h_rows, reg_rows=reg_rows)
-                        grand_total = h_data.grand_total
-                        female_total = h_data.total_female
-                        dropped_total = h_data.total_dropped
-
-                extra_parts = []
-                if dropped_total and str(dropped_total) != "0":
-                    extra_parts.append(f"បោះបង់ <b>{dropped_total}</b> នាក់")
-                if female_total and str(female_total) != "0":
-                    extra_parts.append(f"ស្រី <b>{female_total}</b> នាក់")
-                extra_str = f" ({' • '.join(extra_parts)})" if extra_parts else ""
-                caption = (
-                    f"📈 <b>របាយការណ៍ស្ថិតិប្រចាំខែ (Monthly Report PDF)</b>\n"
-                    f"🗓 <b>ខែ{KHMER_MONTHS.get(now.month, 'កញ្ញា')} ឆ្នាំ {to_khmer_num(now.year)}</b>\n"
-                    f"👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{grand_total} នាក់</b>{extra_str}"
-                )
-
-                async def _send_m():
-                    with open(pdf_path, "rb") as doc:
-                        msg = await BOT_INSTANCE.send_document(
+                    # Fallback: send rich Telegram text message directly
+                    text_report = format_monthly_report(h_data)
+                    async def _send_t():
+                        msg = await BOT_INSTANCE.send_message(
                             chat_id=chat_id,
-                            document=doc,
-                            filename=f"Monthly_Scholarship_Report_{now.year}_{now.month:02d}.pdf",
-                            caption=caption,
+                            text=text_report,
                             parse_mode="HTML"
                         )
-                    now_key = datetime.now(TIMEZONE).strftime("%Y-%m")
-                    storage.log_report_sent("MANUAL_MONTHLY_PDF", now_key, message_id=msg.message_id)
-                    return msg.message_id
+                        now_key = datetime.now(TIMEZONE).strftime("%Y-%m")
+                        storage.log_report_sent("MANUAL_MONTHLY_TEXT", now_key, message_id=msg.message_id)
+                        return msg.message_id
 
-                future = run_async_coro(_send_m())
-                msg_id = future.result(timeout=30)
-                self.send_json({"status": "ok", "message": f"Monthly PDF report sent successfully! (Message ID: {msg_id})"})
+                    future = run_async_coro(_send_t())
+                    msg_id = future.result(timeout=15)
+                    self.send_json({"status": "ok", "message": f"របាយការណ៍សង្ខេបប្រចាំខែត្រូវបានផ្ញើទៅ Telegram រួចរាល់! (Message ID: {msg_id})"})
             except Exception as e:
                 logger.error(f"Error in send-monthly: {e}", exc_info=True)
                 self.send_json({"status": "error", "error": str(e)}, status=500)

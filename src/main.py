@@ -86,26 +86,37 @@ async def monthly_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     status_msg = await update.effective_message.reply_text("⏳ កំពុងទាញយកទិន្នន័យ និងរៀបចំឯកសារ PDF ប្រចាំខែ...")
     try:
-        from src.pdf_generator import generate_monthly_report_pdf
-        from src.report_builder import KHMER_MONTHS, to_khmer_num
+        from src.report_builder import KHMER_MONTHS, to_khmer_num, format_monthly_report
         rows = sheets_client.get_historical_sheet_rows()
         reg_rows = sheets_client.get_registrations_sheet_rows()
         hist_data = parse_historical_sheet(rows, reg_rows=reg_rows)
-        pdf_path = generate_monthly_report_pdf(hist_data, force_refresh=True)
-        now = datetime.now(TIMEZONE)
-        dropped_caption = f"បោះបង់ <b>{hist_data.total_dropped}</b> នាក់" if hist_data.total_dropped > 0 else ""
-        female_caption = f"ស្រី <b>{hist_data.total_female}</b> នាក់" if hist_data.total_female > 0 else ""
-        extra_parts = [p for p in [dropped_caption, female_caption] if p]
-        extra_str = f" ({' • '.join(extra_parts)})" if extra_parts else ""
-        caption = f"📈 <b>របាយការណ៍ស្ថិតិប្រចាំខែ (Monthly Report PDF)</b>\n🗓 <b>ខែ{KHMER_MONTHS.get(now.month, 'កញ្ញា')} ឆ្នាំ {to_khmer_num(now.year)}</b>\n👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{hist_data.grand_total} នាក់</b>{extra_str}"
-        await status_msg.delete()
-        with open(pdf_path, "rb") as doc:
-            await update.effective_message.reply_document(
-                document=doc,
-                filename=f"Monthly_Scholarship_Report_{now.year}_{now.month:02d}.pdf",
-                caption=caption,
-                parse_mode="HTML"
-            )
+
+        pdf_path = None
+        try:
+            from src.pdf_generator import generate_monthly_report_pdf
+            pdf_path = generate_monthly_report_pdf(hist_data, force_refresh=True)
+        except Exception as pdf_err:
+            logger.warning(f"Browser PDF generation failed/unavailable: {pdf_err}. Falling back to formatted text report.")
+
+        if pdf_path and os.path.exists(pdf_path):
+            now = datetime.now(TIMEZONE)
+            dropped_caption = f"បោះបង់ <b>{hist_data.total_dropped}</b> នាក់" if hist_data.total_dropped > 0 else ""
+            female_caption = f"ស្រី <b>{hist_data.total_female}</b> នាក់" if hist_data.total_female > 0 else ""
+            extra_parts = [p for p in [dropped_caption, female_caption] if p]
+            extra_str = f" ({' • '.join(extra_parts)})" if extra_parts else ""
+            caption = f"📈 <b>របាយការណ៍ស្ថិតិប្រចាំខែ (Monthly Report PDF)</b>\n🗓 <b>ខែ{KHMER_MONTHS.get(now.month, 'កញ្ញា')} ឆ្នាំ {to_khmer_num(now.year)}</b>\n👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{hist_data.grand_total} នាក់</b>{extra_str}"
+            await status_msg.delete()
+            with open(pdf_path, "rb") as doc:
+                await update.effective_message.reply_document(
+                    document=doc,
+                    filename=f"Monthly_Scholarship_Report_{now.year}_{now.month:02d}.pdf",
+                    caption=caption,
+                    parse_mode="HTML"
+                )
+        else:
+            # Seamless fallback to rich formatted text report
+            text = format_monthly_report(hist_data)
+            await status_msg.edit_text(text=text, parse_mode="HTML")
     except Exception as e:
         logger.error(f"Error in /monthly: {e}")
         await update.effective_message.reply_text(f"❌ បរាជ័យក្នុងការទាញទិន្នន័យប្រចាំខែ៖ {e}")
