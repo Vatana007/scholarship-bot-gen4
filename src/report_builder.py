@@ -236,6 +236,49 @@ def format_welcome() -> str:
     ]
     return "\n".join(lines)
 
+def format_student_reg_time(raw_val: str) -> str:
+    """
+    Parses timestamp string from Column AJ (e.g. '9/14/2026 8:15:32')
+    into standard 12-hour format with AM/PM (e.g. '08:15 AM').
+    """
+    if not raw_val or not str(raw_val).strip():
+        from src.config import TIMEZONE
+        return datetime.now(TIMEZONE).strftime("%I:%M %p")
+    raw_str = str(raw_val).strip()
+    for fmt in [
+        "%m/%d/%Y %H:%M:%S",
+        "%d/%m/%Y %H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+        "%m/%d/%Y %I:%M:%S %p",
+        "%d/%m/%Y %I:%M:%S %p",
+        "%m/%d/%Y %H:%M",
+        "%d/%m/%Y %H:%M",
+        "%Y-%m-%d %H:%M",
+        "%H:%M:%S",
+        "%I:%M:%S %p",
+        "%H:%M",
+        "%I:%M %p"
+    ]:
+        try:
+            dt = datetime.strptime(raw_str, fmt)
+            return dt.strftime("%I:%M %p")
+        except ValueError:
+            continue
+
+    parts = raw_str.split()
+    if len(parts) >= 2:
+        time_token = parts[1]
+        for t_fmt in ["%H:%M:%S", "%H:%M"]:
+            try:
+                dt = datetime.strptime(time_token, t_fmt)
+                if len(parts) >= 3 and parts[2].upper() in ["AM", "PM"]:
+                    return f"{dt.strftime('%I:%M')} {parts[2].upper()}"
+                return dt.strftime("%I:%M %p")
+            except ValueError:
+                continue
+
+    return raw_str
+
 def format_new_registration_alert(student: dict) -> str:
     """
     Formats instant alert for newly registered student in 'Part 2 -Registrations'.
@@ -246,9 +289,10 @@ def format_new_registration_alert(student: dict) -> str:
       - Phone: លេខទូរស័ព្ទ (Col J)
       - POB: ទីកន្លែងកំណើត / ខេត្តកំណើត (Col M)
       - Skill: ជំនាញស្នើសុំ (Col P)
+      - Time: វេលាម៉ោងពី Google Sheet (Col AJ)
     Medium letter, clean layout, no heavy bold/italic walls.
     """
-    now_str = datetime.now().strftime("%I:%M %p")
+    time_str = format_student_reg_time(student.get("registered_time", ""))
     lines = []
     lines.append("🎓 <b>មានការចុះឈ្មោះថ្មី!</b>")
     lines.append(DIVIDER)
@@ -259,6 +303,6 @@ def format_new_registration_alert(student: dict) -> str:
     lines.append(f"• ខេត្តកំណើត៖ {html.escape(student.get('pob', '') or '—')}")
     lines.append(f"• ជំនាញ៖ {html.escape(student.get('skill', '') or '—')}")
     lines.append(DIVIDER)
-    lines.append(f"⏱ វេលាម៉ោង៖ {now_str}")
+    lines.append(f"⏱ វេលាម៉ោង៖ {time_str}")
     return "\n".join(lines)
 

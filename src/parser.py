@@ -592,6 +592,7 @@ def parse_student_registrations(reg_rows: list[list[str]]) -> list[dict]:
     phone_col = 9   # Col J
     pob_col = 12    # Col M ('ខេត្តកំណើត' - Province only)
     skill_col = 15  # Col P
+    time_col = 35   # Col AJ ('កាលបរិច្ឆេទដាក់ពាក្យ')
 
     for idx, h in enumerate(header):
         h_clean = h.strip()
@@ -607,6 +608,8 @@ def parse_student_registrations(reg_rows: list[list[str]]) -> list[dict]:
             pob_col = idx
         elif h_clean == "ជំនាញស្នើសុំ":
             skill_col = idx
+        elif h_clean == "កាលបរិច្ឆេទដាក់ពាក្យ" or idx == 35:
+            time_col = idx
 
     students = []
     for row_idx, r in enumerate(reg_rows[1:], start=2):
@@ -621,6 +624,7 @@ def parse_student_registrations(reg_rows: list[list[str]]) -> list[dict]:
         raw_pob = r[pob_col].strip() if len(r) > pob_col else ""
         pob = extract_province_only(raw_pob)
         skill = r[skill_col].strip() if len(r) > skill_col else ""
+        registered_time = r[time_col].strip() if len(r) > time_col else ""
 
         clean_phone = phone.replace(" ", "")
         # Format phone with leading zero if 8 or 9 digits
@@ -638,6 +642,7 @@ def parse_student_registrations(reg_rows: list[list[str]]) -> list[dict]:
             "phone": display_phone,
             "pob": pob,
             "skill": skill,
+            "registered_time": registered_time,
             "row_index": row_idx,
             "key": student_key
         })
