@@ -2363,12 +2363,15 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         pass
 
     def send_json(self, data, status=200):
-        encoded = json.dumps(data, ensure_ascii=False).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(encoded)))
-        self.end_headers()
-        self.wfile.write(encoded)
+        try:
+            encoded = json.dumps(data, ensure_ascii=False).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            self.wfile.write(encoded)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def do_HEAD(self):
         self.send_response(200)
@@ -2626,6 +2629,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 msg_id = future.result(timeout=15)
                 self.send_json({"status": "ok", "message": f"របាយការណ៍ប្រចាំថ្ងៃ ({t_data.date_str}) ត្រូវបានផ្ញើទៅ Telegram រួចរាល់! (Message ID: {msg_id})"})
             except Exception as e:
+                logger.error(f"Error in send-daily: {e}", exc_info=True)
                 self.send_json({"status": "error", "error": str(e)}, status=500)
             return
 
@@ -2698,6 +2702,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 msg_id = future.result(timeout=30)
                 self.send_json({"status": "ok", "message": f"Monthly PDF report sent successfully! (Message ID: {msg_id})"})
             except Exception as e:
+                logger.error(f"Error in send-monthly: {e}", exc_info=True)
                 self.send_json({"status": "error", "error": str(e)}, status=500)
             return
 
