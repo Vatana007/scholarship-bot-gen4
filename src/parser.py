@@ -1,6 +1,7 @@
 import hashlib
 import json
 import re
+from datetime import datetime
 from dataclasses import dataclass, field
 from src.config import logger
 
@@ -79,6 +80,10 @@ def parse_date_dmy(s: str) -> tuple[int, int, int] | None:
     if not s:
         return None
     s_clean = str(s).strip()
+    if s_clean.lower() in ["today", "ថ្ងៃនេះ"]:
+        from src.config import TIMEZONE
+        now = datetime.now(TIMEZONE)
+        return now.day, now.month, now.year
     m_iso = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})$", s_clean)
     if m_iso:
         return int(m_iso.group(3)), int(m_iso.group(2)), int(m_iso.group(1))
@@ -89,6 +94,10 @@ def parse_date_dmy(s: str) -> tuple[int, int, int] | None:
             p1_raw = parts[1].strip().lower()
             m = MONTH_NAME_MAP.get(p1_raw, int(p1_raw) if p1_raw.isdigit() else 0)
             y = int(parts[2])
+            if y < 100:
+                y += 2000
+            if m > 12 and p0 <= 12:
+                p0, m = m, p0
             return p0, m, y
         except Exception:
             pass
@@ -102,8 +111,8 @@ def count_registration_statuses(reg_rows: list[list[str]], target_date: str = No
         - Contains 'OK' -> count as 'មកដល់' (arrived)
         - Contains 'ទៅផ្ទះវិញ' -> count as 'ត្រឡប់ទៅវិញ' (returned)
         - Contains 'បោះបង់' -> count as 'បោះបង់' (dropped)
-    - If target_date matches specific rows in Date Column CH (index 85), returns that date's counts.
-    - Otherwise returns the cumulative counts across all registered students.
+    - If target_date is a specific date or 'today'/'ថ្ងៃនេះ', returns ONLY that date's counts.
+    - If target_date is 'all', 'overall', 'សរុប', 'សរុបទាំងអស់', or None: returns cumulative counts.
     """
     if not reg_rows or len(reg_rows) < 2:
         return 0, 0, 0
@@ -122,11 +131,15 @@ def count_registration_statuses(reg_rows: list[list[str]], target_date: str = No
         elif h_clean.lower() == "date" or "កាលបរិច្ឆេទ" in h_clean:
             date_col = idx
 
-    t_dmy = parse_date_dmy(target_date) if target_date and target_date.lower() not in ["all", "សរុប"] else None
+    is_cumulative = False
+    if not target_date or str(target_date).strip().lower() in ["all", "overall", "សរុប", "សរុបទាំងអស់"]:
+        is_cumulative = True
+        t_dmy = None
+    else:
+        t_dmy = parse_date_dmy(str(target_date).strip())
 
     tot_arr, tot_ret, tot_drp = 0, 0, 0
     d_arr, d_ret, d_drp = 0, 0, 0
-    d_matched = False
 
     for r in reg_rows[1:]:
         if len(r) <= name_col or not r[name_col].strip():
@@ -148,7 +161,6 @@ def count_registration_statuses(reg_rows: list[list[str]], target_date: str = No
         if t_dmy and d_str:
             r_dmy = parse_date_dmy(d_str)
             if r_dmy and r_dmy == t_dmy:
-                d_matched = True
                 if is_ok:
                     d_arr += 1
                 elif is_ret:
@@ -156,7 +168,7 @@ def count_registration_statuses(reg_rows: list[list[str]], target_date: str = No
                 elif is_drp:
                     d_drp += 1
 
-    if t_dmy and d_matched:
+    if not is_cumulative:
         return d_arr, d_ret, d_drp
 
     return tot_arr, tot_ret, tot_drp
@@ -470,29 +482,13 @@ def parse_date_report(h_rows: list[list[str]], today_rows: list[list[str]], targ
     if not target_clean or target_clean.lower() in ["today", "ថ្ងៃនេះ"]:
         return today_data
 
-    # Parse target year, month, day
-    m_iso = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})$", target_clean)
-    if m_iso:
-        y, m, d = int(m_iso.group(1)), int(m_iso.group(2)), int(m_iso.group(3))
-    else:
-        parts = target_clean.replace("-", "/").split("/")
-        if len(parts) == 3:
-            try:
-                p0, p1, p2 = int(parts[0]), int(parts[1]), int(parts[2])
-                if p2 > 1000:
-                    if p0 > 12:
-                        d, m, y = p0, p1, p2
-                    else:
-                        m, d, y = p0, p1, p2
-                else:
-                    d, m, y = p0, p1, p2
-            except ValueError:
-                return today_data
-        else:
-            return today_data
+    t_dmy = parse_date_dmy(target_clean)
+    if not t_dmy:
+        return today_data
 
-    # Check if target matches today_sheet
-    if f"{d}" in today_data.date_str and (f"{m}" in today_data.date_str or "Sep" in today_data.date_str):
+    d, m, y = t_dmy
+    today_dmy = parse_date_dmy(today_data.date_str)
+    if today_dmy and t_dmy == today_dmy:
         return today_data
 
     # Find matching column in h_rows
@@ -500,6 +496,12 @@ def parse_date_report(h_rows: list[list[str]], today_rows: list[list[str]], targ
     if len(h_rows) > 1:
         for idx in range(8, len(h_rows[1]), 4):
             cell_val = h_rows[1][idx].strip()
+            if not cell_val:
+                continue
+            cell_dmy = parse_date_dmy(cell_val)
+            if cell_dmy and cell_dmy == t_dmy:
+                col_idx = idx
+                break
             if cell_val in [f"{m}/{d}/{y}", f"{d}/{m}/{y}", f"{m}/{d}/{y%100}"]:
                 col_idx = idx
                 break

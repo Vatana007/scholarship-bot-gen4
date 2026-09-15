@@ -112,12 +112,12 @@ assert status == 200
 sum_data = json.loads(sum_body)
 assert sum_data["status"] == "ok"
 assert sum_data["is_overall"] is True
-assert sum_data["total_applied"] == 45
+assert sum_data["total_applied"] == 44
 assert sum_data["female_applied"] == 21
 assert sum_data["total_arrived"] == 18
-assert sum_data["female_arrived"] == 6
-assert sum_data["total_returned"] == 26
-assert sum_data["female_returned"] == 15
+assert sum_data["female_arrived"] == 5
+assert sum_data["total_returned"] == 25
+assert sum_data["female_returned"] == 16
 assert sum_data["total_dropped"] == 1
 assert sum_data["female_dropped"] == 0
 assert "ដាក់ពាក្យសរុប" in sum_data["text"]

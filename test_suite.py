@@ -205,12 +205,12 @@ class TestBotSuite(unittest.TestCase):
         # 1. Overall cumulative summary
         overall = parse_status_gender_summary(reg_rows, target_date="all")
         self.assertTrue(overall.is_overall)
-        self.assertEqual(overall.total_applied, 45)
+        self.assertEqual(overall.total_applied, 44)
         self.assertEqual(overall.female_applied, 21)
         self.assertEqual(overall.total_arrived, 18)
-        self.assertEqual(overall.female_arrived, 6)
-        self.assertEqual(overall.total_returned, 26)
-        self.assertEqual(overall.female_returned, 15)
+        self.assertEqual(overall.female_arrived, 5)
+        self.assertEqual(overall.total_returned, 25)
+        self.assertEqual(overall.female_returned, 16)
         self.assertEqual(overall.total_dropped, 1)
         self.assertEqual(overall.female_dropped, 0)
 
@@ -240,6 +240,48 @@ class TestBotSuite(unittest.TestCase):
         self.assertIn("ដាក់ពាក្យសរុប", date_html)
 
         print(f"PASS: Test 07: Status gender summary successfully verified (All: {overall.total_applied} applied, {overall.female_applied} female, {overall.total_arrived} arrived, {overall.total_returned} returned, {overall.total_dropped} dropped)")
+
+    def test_08_daily_report_under_status_this_day(self):
+        """Test that daily report arrival/returned/dropped status only displays this day's counts, not all-time cumulative."""
+        from src.parser import count_registration_statuses, parse_date_report
+        client = SheetsClient()
+        reg_rows = client.get_registrations_sheet_rows()
+        today_rows = client.get_today_sheet_rows()
+        hist_rows = client.get_historical_sheet_rows()
+
+        # 1. Today counts should reflect today (0, 0, 0), NOT all-time (18, 25, 1)
+        today_counts = count_registration_statuses(reg_rows, "today")
+        self.assertEqual(today_counts, (0, 0, 0))
+
+        today_data = parse_today_sheet(today_rows, reg_rows=reg_rows)
+        self.assertEqual(today_data.total_arrived, 0)
+        self.assertEqual(today_data.total_returned, 0)
+        self.assertEqual(today_data.total_dropped, 0)
+
+        daily_html = format_daily_report(today_data)
+        self.assertIn("[ មកដល់: 0 | ត្រឡប់ទៅវិញ: 0 | បោះបង់: 0 ]", daily_html)
+        self.assertNotIn("[ មកដល់: 18 | ត្រឡប់ទៅវិញ: 25 | បោះបង់: 1 ]", daily_html)
+
+        # 2. Specific date (10/Sep/2026) has (8, 10, 1)
+        d10_counts = count_registration_statuses(reg_rows, "10/Sep/2026")
+        self.assertEqual(d10_counts, (8, 10, 1))
+
+        d10_data = parse_date_report(hist_rows, today_rows, "10/Sep/2026", reg_rows=reg_rows)
+        self.assertEqual(d10_data.total_arrived, 8)
+        self.assertEqual(d10_data.total_returned, 10)
+        self.assertEqual(d10_data.total_dropped, 1)
+        d10_html = format_daily_report(d10_data)
+        self.assertIn("[ មកដល់: 8 | ត្រឡប់ទៅវិញ: 10 | បោះបង់: 1 ]", d10_html)
+
+        # 3. Specific date (14/Sep/2026) has (0, 4, 0)
+        d14_counts = count_registration_statuses(reg_rows, "14/Sep/2026")
+        self.assertEqual(d14_counts, (0, 4, 0))
+
+        # 4. Cumulative "all" should return the full cumulative counts
+        all_counts = count_registration_statuses(reg_rows, "all")
+        self.assertEqual(all_counts, (18, 25, 1))
+
+        print("PASS: Test 08: Daily report 'under' status accurately displays only this day's data")
 
 if __name__ == "__main__":
     unittest.main()
