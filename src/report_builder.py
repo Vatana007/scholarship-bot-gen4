@@ -1,7 +1,7 @@
 import html
 from datetime import datetime
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from src.parser import TodayReportData, HistoricalReportData
+from src.parser import TodayReportData, HistoricalReportData, StatusGenderSummary
 
 DIVIDER = "──────────"
 
@@ -212,12 +212,38 @@ def format_categories_page(categories: list, page: int = 1, page_size: int = 8):
 
     return "\n".join(lines), InlineKeyboardMarkup(keyboard)
 
+def format_status_summary_report(summary: StatusGenderSummary, overall: StatusGenderSummary = None) -> str:
+    lines = []
+    if summary.is_overall:
+        lines.append("📋 <b>របាយការណ៍សង្ខេបស្ថិតិអាហារូបករណ៍ (សរុបទាំងអស់)</b>")
+        lines.append(f"🗓 <b>គិតត្រឹម៖</b> {summary.date_label}")
+    else:
+        lines.append("📋 <b>របាយការណ៍សង្ខេបស្ថិតិអាហារូបករណ៍</b>")
+        lines.append(f"🗓 <b>កាលបរិច្ឆេទ៖</b> {summary.date_label}")
+    lines.append(DIVIDER)
+    lines.append(f"• <b>ដាក់ពាក្យសរុប៖</b> <b>{summary.total_applied}</b> នាក់ (ស្រី <b>{summary.female_applied}</b> នាក់)")
+    lines.append(f"• <b>មកដល់៖</b> <b>{summary.total_arrived}</b> នាក់ (ស្រី <b>{summary.female_arrived}</b> នាក់)")
+    lines.append(f"• <b>ទៅផ្ទះវិញ៖</b> <b>{summary.total_returned}</b> នាក់ (ស្រី <b>{summary.female_returned}</b> នាក់)")
+    lines.append(f"• <b>បោះបង់៖</b> <b>{summary.total_dropped}</b> នាក់ (ស្រី <b>{summary.female_dropped}</b> នាក់)")
+    lines.append(DIVIDER)
+
+    if overall and not summary.is_overall:
+        lines.append(
+            f"👥 <i>សរុបរួមទាំងអស់៖ {overall.total_applied} នាក់ (ស្រី {overall.female_applied} នាក់) | "
+            f"មកដល់៖ {overall.total_arrived} (ស្រី {overall.female_arrived}) | "
+            f"ទៅផ្ទះវិញ៖ {overall.total_returned} (ស្រី {overall.female_returned}) | "
+            f"បោះបង់៖ {overall.total_dropped} (ស្រី {overall.female_dropped})</i>"
+        )
+
+    return "\n".join(lines)
+
 def format_help() -> str:
     lines = [
         "📖 <b>ការណែនាំការប្រើប្រាស់ Bot ស្ថិតិ</b>",
         DIVIDER,
         "បញ្ជា (Commands) ដែលអាចប្រើបាន៖",
         "• /start - បង្ហាញផ្ទាំងស្វាគមន៍ និងមុខងារទូទៅ",
+        "• /summary - បង្ហាញរបាយការណ៍សង្ខេប (ដាក់ពាក្យ, មកដល់, ទៅផ្ទះវិញ, បោះបង់)",
         "• /today - មើលស្ថិតិបច្ចុប្បន្នភាពថ្ងៃនេះ (ស្ថិតិថ្ងៃនឹង)",
         "• /report ឬ /daily - បង្ហាញរបាយការណ៍ប្រចាំថ្ងៃពេញលេញ",
         "• /monthly - បង្ហាញរបាយការណ៍សរុបប្រចាំខែ (ស្ថិតិប្រចាំថ្ងៃ)",

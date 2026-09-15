@@ -48,18 +48,50 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = format_welcome()
     keyboard = [
         [
-            InlineKeyboardButton("📊 ស្ថិតិថ្ងៃនេះ", callback_data="action_today"),
-            InlineKeyboardButton("📅 របាយការណ៍ប្រចាំខែ", callback_data="action_monthly")
+            InlineKeyboardButton("📋 របាយការណ៍សង្ខេប", callback_data="action_summary"),
+            InlineKeyboardButton("📊 ស្ថិតិថ្ងៃនេះ", callback_data="action_today")
         ],
         [
-            InlineKeyboardButton("📂 បញ្ជីមុខជំនាញទាំងអស់", callback_data="action_categories_p1"),
+            InlineKeyboardButton("📅 របាយការណ៍ប្រចាំខែ", callback_data="action_monthly"),
+            InlineKeyboardButton("📂 បញ្ជីមុខជំនាញទាំងអស់", callback_data="action_categories_p1")
+        ],
+        [
             InlineKeyboardButton("📖 ជំនួយ (Help)", callback_data="action_help")
         ]
     ]
     await update.effective_message.reply_text(
         text=text,
-        parse_mode="HTML"
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
+async def summary_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_access(update):
+        return
+    target_date = "all"
+    if context and context.args and len(context.args) > 0:
+        target_date = context.args[0].strip()
+
+    status_msg = await update.effective_message.reply_text("⏳ កំពុងទាញយកទិន្នន័យសង្ខេប...")
+    try:
+        from src.parser import parse_status_gender_summary
+        from src.report_builder import format_status_summary_report
+        reg_rows = sheets_client.get_registrations_sheet_rows()
+        summary = parse_status_gender_summary(reg_rows, target_date=target_date)
+        overall = None
+        if not summary.is_overall:
+            overall = parse_status_gender_summary(reg_rows, target_date="all")
+        text = format_status_summary_report(summary, overall=overall)
+        markup = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("🔄 ធ្វើបច្ចុប្បន្នភាព", callback_data=f"action_sum_{target_date}"),
+                InlineKeyboardButton("📊 របាយការណ៍ពេញ", callback_data="action_today")
+            ]
+        ])
+        await status_msg.edit_text(text=text, parse_mode="HTML", reply_markup=markup)
+    except Exception as e:
+        logger.error(f"Error in /summary: {e}")
+        await status_msg.edit_text(f"❌ បរាជ័យក្នុងការទាញទិន្នន័យ៖ {e}")
 
 async def today_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_access(update):
@@ -213,15 +245,39 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text = format_welcome()
             keyboard = [
                 [
-                    InlineKeyboardButton("📊 ស្ថិតិថ្ងៃនេះ", callback_data="action_today"),
-                    InlineKeyboardButton("📅 របាយការណ៍ប្រចាំខែ", callback_data="action_monthly")
+                    InlineKeyboardButton("📋 របាយការណ៍សង្ខេប", callback_data="action_summary"),
+                    InlineKeyboardButton("📊 ស្ថិតិថ្ងៃនេះ", callback_data="action_today")
                 ],
                 [
-                    InlineKeyboardButton("📂 បញ្ជីមុខជំនាញទាំងអស់", callback_data="action_categories_p1"),
+                    InlineKeyboardButton("📅 របាយការណ៍ប្រចាំខែ", callback_data="action_monthly"),
+                    InlineKeyboardButton("📂 បញ្ជីមុខជំនាញទាំងអស់", callback_data="action_categories_p1")
+                ],
+                [
                     InlineKeyboardButton("📖 ជំនួយ (Help)", callback_data="action_help")
                 ]
             ]
             await query.edit_message_text(text=text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(keyboard))
+
+        elif data == "action_summary" or data.startswith("action_sum_"):
+            target_date = "all"
+            if data.startswith("action_sum_"):
+                target_date = data.replace("action_sum_", "")
+            from src.parser import parse_status_gender_summary
+            from src.report_builder import format_status_summary_report
+            reg_rows = sheets_client.get_registrations_sheet_rows()
+            summary = parse_status_gender_summary(reg_rows, target_date=target_date)
+            overall = None
+            if not summary.is_overall:
+                overall = parse_status_gender_summary(reg_rows, target_date="all")
+            text = format_status_summary_report(summary, overall=overall)
+            markup = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("🔄 ធ្វើបច្ចុប្បន្នភាព", callback_data=f"action_sum_{target_date}"),
+                    InlineKeyboardButton("📊 របាយការណ៍ពេញ", callback_data="action_today")
+                ],
+                [InlineKeyboardButton("🔙 ត្រឡប់ក្រោយ", callback_data="action_start")]
+            ])
+            await query.edit_message_text(text=text, parse_mode="HTML", reply_markup=markup)
 
         elif data.startswith("action_cat_p_") or data == "action_categories_p1":
             page = 1
@@ -279,6 +335,7 @@ def main():
 
     app.add_error_handler(error_handler)
     app.add_handler(CommandHandler(["start"], start_cmd))
+    app.add_handler(CommandHandler(["summary", "status"], summary_cmd))
     app.add_handler(CommandHandler(["today"], today_cmd))
     app.add_handler(CommandHandler(["report", "daily"], today_cmd))
     app.add_handler(CommandHandler(["monthly"], monthly_cmd))

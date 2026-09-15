@@ -16,10 +16,14 @@ if BASE_DIR not in sys.path:
 import src.config as config
 from src.storage import Storage
 from src.sheets_client import SheetsClient
-from src.parser import parse_today_sheet, parse_historical_sheet, parse_int_safe, compute_rows_hash
+from src.parser import (
+    parse_today_sheet, parse_historical_sheet, parse_int_safe,
+    compute_rows_hash, parse_status_gender_summary
+)
 from src.report_builder import (
     format_daily_report, format_monthly_report, format_diff_alert,
-    format_categories_page, format_help, format_welcome, to_khmer_num, format_khmer_date
+    format_categories_page, format_help, format_welcome, to_khmer_num,
+    format_khmer_date, format_status_summary_report
 )
 
 def validate_telegram_html(text: str) -> bool:
@@ -191,6 +195,51 @@ class TestBotSuite(unittest.TestCase):
             except Exception:
                 pass
         print("PASS: Test 06: Diff logic correctly detected category modifications and new additions")
+
+    def test_07_status_gender_summary(self):
+        """Test parsing and HTML formatting of applicant summary with gender breakdown."""
+        client = SheetsClient()
+        reg_rows = client.get_registrations_sheet_rows()
+        self.assertGreater(len(reg_rows), 10)
+
+        # 1. Overall cumulative summary
+        overall = parse_status_gender_summary(reg_rows, target_date="all")
+        self.assertTrue(overall.is_overall)
+        self.assertEqual(overall.total_applied, 45)
+        self.assertEqual(overall.female_applied, 21)
+        self.assertEqual(overall.total_arrived, 18)
+        self.assertEqual(overall.female_arrived, 6)
+        self.assertEqual(overall.total_returned, 26)
+        self.assertEqual(overall.female_returned, 15)
+        self.assertEqual(overall.total_dropped, 1)
+        self.assertEqual(overall.female_dropped, 0)
+
+        # 2. Specific date summary
+        date_sum = parse_status_gender_summary(reg_rows, target_date="10/Sep/2026")
+        self.assertFalse(date_sum.is_overall)
+        self.assertEqual(date_sum.total_applied, 19)
+        self.assertEqual(date_sum.female_applied, 5)
+        self.assertEqual(date_sum.total_arrived, 8)
+        self.assertEqual(date_sum.female_arrived, 1)
+        self.assertEqual(date_sum.total_returned, 10)
+        self.assertEqual(date_sum.female_returned, 4)
+        self.assertEqual(date_sum.total_dropped, 1)
+        self.assertEqual(date_sum.female_dropped, 0)
+
+        # 3. HTML validation for Telegram
+        overall_html = format_status_summary_report(overall)
+        self.assertTrue(validate_telegram_html(overall_html), "Overall summary HTML must be valid Telegram HTML")
+        self.assertIn("ដាក់ពាក្យសរុប", overall_html)
+        self.assertIn("ស្រី", overall_html)
+        self.assertIn("មកដល់", overall_html)
+        self.assertIn("ទៅផ្ទះវិញ", overall_html)
+        self.assertIn("បោះបង់", overall_html)
+
+        date_html = format_status_summary_report(date_sum, overall=overall)
+        self.assertTrue(validate_telegram_html(date_html), "Date summary HTML with overall footnote must be valid Telegram HTML")
+        self.assertIn("ដាក់ពាក្យសរុប", date_html)
+
+        print(f"PASS: Test 07: Status gender summary successfully verified (All: {overall.total_applied} applied, {overall.female_applied} female, {overall.total_arrived} arrived, {overall.total_returned} returned, {overall.total_dropped} dropped)")
 
 if __name__ == "__main__":
     unittest.main()

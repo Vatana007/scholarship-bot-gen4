@@ -106,4 +106,48 @@ assert status == 200
 assert len(logs_text) > 0
 print(f"PASS: 6. /api/logs returned {len(logs_text.splitlines())} lines of logs!")
 
+# 7. Test /api/summary-preview
+status, sum_body = get_url("/api/summary-preview?date=all")
+assert status == 200
+sum_data = json.loads(sum_body)
+assert sum_data["status"] == "ok"
+assert sum_data["is_overall"] is True
+assert sum_data["total_applied"] == 45
+assert sum_data["female_applied"] == 21
+assert sum_data["total_arrived"] == 18
+assert sum_data["female_arrived"] == 6
+assert sum_data["total_returned"] == 26
+assert sum_data["female_returned"] == 15
+assert sum_data["total_dropped"] == 1
+assert sum_data["female_dropped"] == 0
+assert "ដាក់ពាក្យសរុប" in sum_data["text"]
+assert "ស្រី" in sum_data["text"]
+assert "មកដល់" in sum_data["text"]
+assert "ទៅផ្ទះវិញ" in sum_data["text"]
+assert "បោះបង់" in sum_data["text"]
+print("PASS: 7. /api/summary-preview (all-time) returned correct metrics and formatted text!")
+
+# 8. Test /api/summary-preview with specific date
+status, sum_date_body = get_url("/api/summary-preview?date=10/Sep/2026")
+assert status == 200
+sum_date_data = json.loads(sum_date_body)
+assert sum_date_data["status"] == "ok"
+assert sum_date_data["total_applied"] == 19
+assert sum_date_data["female_applied"] == 5
+assert sum_date_data["total_arrived"] == 8
+assert sum_date_data["female_arrived"] == 1
+assert sum_date_data["total_returned"] == 10
+assert sum_date_data["female_returned"] == 4
+assert sum_date_data["total_dropped"] == 1
+assert sum_date_data["female_dropped"] == 0
+print("PASS: 8. /api/summary-preview (10/Sep/2026) returned accurate date-filtered metrics!")
+
+# 9. Test /api/actions/send-summary endpoint structure
+try:
+    post_json("/api/actions/send-summary", {"date": "all"})
+except urllib.error.HTTPError as he:
+    # 503 is expected because Bot instance is not initialized in standalone test
+    assert he.code in [503, 400]
+print("PASS: 9. /api/actions/send-summary routed correctly!")
+
 print("\nALL WEB MANAGEMENT TESTS PASSED 100%!")

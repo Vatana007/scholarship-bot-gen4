@@ -1483,17 +1483,25 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <button class="btn btn-primary" type="button" onclick="sendDailyBySelectedDate()">
                             <svg class="icon icon-sm"><use href="#icon-send"></use></svg>
-                            <span>ផ្ញើទៅ Telegram ភ្លាមៗ</span>
+                            <span>ផ្ញើរបាយការណ៍ពេញ</span>
+                        </button>
+                        <button class="btn btn-success" type="button" onclick="sendSummaryBySelectedDate()">
+                            <svg class="icon icon-sm"><use href="#icon-send"></use></svg>
+                            <span>ផ្ញើសារសង្ខេប (Summary)</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- Telegram Chat Bubble Mockup Preview -->
                 <div class="telegram-preview-wrapper" id="preview-wrapper">
-                    <div class="tg-header">
-                        <div class="tg-title">
+                    <div class="tg-header" style="flex-wrap: wrap; gap: 8px;">
+                        <div class="tg-title" style="display: flex; gap: 8px; align-items: center;">
                             <svg class="icon icon-sm" style="color: #38bdf8;"><use href="#icon-message"></use></svg>
-                            <span>Telegram Message Preview</span>
+                            <span>Telegram Preview</span>
+                        </div>
+                        <div style="display: inline-flex; gap: 4px;">
+                            <button type="button" id="btn-preview-daily" class="btn btn-primary btn-sm" style="padding: 3px 8px; font-size: 0.75rem;" onclick="switchPreviewMode('daily')">របាយការណ៍ពេញ</button>
+                            <button type="button" id="btn-preview-summary" class="btn btn-secondary btn-sm" style="padding: 3px 8px; font-size: 0.75rem;" onclick="switchPreviewMode('summary')">សារសង្ខេប (Summary)</button>
                         </div>
                         <button class="btn btn-secondary btn-sm" onclick="copyPreviewText()">
                             <svg class="icon icon-sm"><use href="#icon-copy"></use></svg>
@@ -1515,6 +1523,20 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     </div>
                 </div>
                 <div class="actions-grid">
+                    <div class="action-card" style="border-color: rgba(52, 211, 153, 0.4);">
+                        <div>
+                            <div class="action-title">
+                                <svg class="icon icon-sm" style="color: #34d399;"><use href="#icon-file-text"></use></svg>
+                                <span>ផ្ញើរបាយការណ៍សង្ខេប</span>
+                            </div>
+                            <div class="action-desc">ផ្ញើសារសង្ខេប (ដាក់ពាក្យសរុប, ស្រី, មកដល់, ស្រី, ទៅផ្ទះវិញ, ស្រី, បោះបង់, ស្រី) ទៅ Telegram ភ្លាមៗ។</div>
+                        </div>
+                        <button class="btn btn-success" onclick="triggerAction('send-summary')">
+                            <svg class="icon icon-sm"><use href="#icon-send"></use></svg>
+                            <span>ផ្ញើសារសង្ខេប</span>
+                        </button>
+                    </div>
+
                     <div class="action-card">
                         <div>
                             <div class="action-title">
@@ -2192,25 +2214,55 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 const data = await res.json();
                 if (data.status === 'ok') {
                     const sel = document.getElementById('select-report-date');
-                    sel.innerHTML = `<option value="today">⭐️ ថ្ងៃនេះ (Today - ${data.today_date})</option>`;
+                    let totStr = data.total_students ? ` (${data.total_students} នាក់)` : '';
+                    sel.innerHTML = `<option value="all">⭐️ សរុបទាំងអស់ (All Time Summary)${totStr}</option>
+                                     <option value="today">⭐️ ថ្ងៃនេះ (Today - ${data.today_date})</option>`;
                     if (data.dates && data.dates.length > 0) {
                         data.dates.forEach(d => {
                             const isStar = d.total > 0 ? '⭐️ ' : '';
                             sel.innerHTML += `<option value="${d.date}">${isStar}${d.label}</option>`;
                         });
                     }
+                    refreshPreview();
                 }
             } catch (e) {
                 console.error('Error loading available dates:', e);
             }
         }
 
+        let currentPreviewMode = 'daily';
+
+        function switchPreviewMode(mode) {
+            currentPreviewMode = mode;
+            const btnDaily = document.getElementById('btn-preview-daily');
+            const btnSummary = document.getElementById('btn-preview-summary');
+            if (btnDaily && btnSummary) {
+                if (mode === 'daily') {
+                    btnDaily.className = 'btn btn-primary btn-sm';
+                    btnSummary.className = 'btn btn-secondary btn-sm';
+                } else {
+                    btnDaily.className = 'btn btn-secondary btn-sm';
+                    btnSummary.className = 'btn btn-success btn-sm';
+                }
+            }
+            refreshPreview();
+        }
+
+        async function refreshPreview() {
+            if (currentPreviewMode === 'summary') {
+                await previewSummaryDate();
+            } else {
+                await previewDailyDate();
+            }
+        }
+
         function onDateDropdownChange(val) {
-            if (val && val !== 'today') {
+            if (val && val !== 'today' && val !== 'all') {
                 document.getElementById('input-custom-date').value = val;
             } else {
                 document.getElementById('input-custom-date').value = '';
             }
+            refreshPreview();
         }
 
         function onCustomDateChange(val) {
@@ -2223,6 +2275,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     }
                 }
             }
+            refreshPreview();
         }
 
         async function previewDailyDate() {
@@ -2233,6 +2286,25 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             box.innerText = 'កំពុងរៀបចំ Preview សម្រាប់ថ្ងៃ ' + dateVal + '...';
             try {
                 const res = await fetch('/api/daily-preview?date=' + encodeURIComponent(dateVal));
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    box.innerText = data.text;
+                } else {
+                    box.innerText = 'មិនមានទិន្នន័យ៖ ' + (data.error || 'Unknown error');
+                }
+            } catch (e) {
+                box.innerText = 'បរាជ័យក្នុងការតភ្ជាប់៖ ' + e;
+            }
+        }
+
+        async function previewSummaryDate() {
+            const dateVal = document.getElementById('input-custom-date').value || document.getElementById('select-report-date').value || 'all';
+            const wrapper = document.getElementById('preview-wrapper');
+            const box = document.getElementById('preview-box');
+            wrapper.style.display = 'block';
+            box.innerText = 'កំពុងរៀបចំ Preview សារសង្ខេបសម្រាប់ ' + dateVal + '...';
+            try {
+                const res = await fetch('/api/summary-preview?date=' + encodeURIComponent(dateVal));
                 const data = await res.json();
                 if (data.status === 'ok') {
                     box.innerText = data.text;
@@ -2264,6 +2336,28 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     const resData = await res.json();
                     if (resData.status === 'ok') {
                         showToast(resData.message || 'បានផ្ញើដោយជោគជ័យ!');
+                    } else {
+                        showToast('បរាជ័យ៖ ' + (resData.error || 'មានបញ្ហា'), true);
+                    }
+                } catch (e) {
+                    showToast('បរាជ័យក្នុងការតភ្ជាប់៖ ' + e, true);
+                }
+            });
+        }
+
+        function sendSummaryBySelectedDate() {
+            const dateVal = document.getElementById('input-custom-date').value || document.getElementById('select-report-date').value || 'all';
+            promptPin(async (pin) => {
+                showToast('កំពុងផ្ញើសារសង្ខេប (' + dateVal + ') ទៅ Telegram...');
+                try {
+                    const res = await fetch('/api/actions/send-summary', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-Admin-PIN': pin },
+                        body: JSON.stringify({ date: dateVal })
+                    });
+                    const resData = await res.json();
+                    if (resData.status === 'ok') {
+                        showToast(resData.message || 'បានផ្ញើសារសង្ខេបដោយជោគជ័យ!');
                     } else {
                         showToast('បរាជ័យ៖ ' + (resData.error || 'មានបញ្ហា'), true);
                     }
@@ -2489,9 +2583,11 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 t_rows = sheets_client.get_today_sheet_rows()
                 reg_rows = sheets_client.get_registrations_sheet_rows()
                 today_data = parse_today_sheet(t_rows, reg_rows=reg_rows)
+                total_reg_students = max(0, len(reg_rows) - 1) if reg_rows else 0
                 self.send_json({
                     "status": "ok",
                     "today_date": today_data.date_str,
+                    "total_students": total_reg_students,
                     "dates": dates
                 })
             except Exception as e:
@@ -2510,6 +2606,37 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 t_data = parse_date_report(h_rows, t_rows, target_date, reg_rows=reg_rows)
                 msg_text = format_daily_report(t_data)
                 self.send_json({"status": "ok", "text": msg_text, "date": t_data.date_str})
+            except Exception as e:
+                self.send_json({"status": "error", "error": str(e)}, status=500)
+            return
+
+        if self.path.startswith("/api/summary-preview"):
+            try:
+                from urllib.parse import urlparse, parse_qs
+                from src.parser import parse_status_gender_summary
+                from src.report_builder import format_status_summary_report
+                query = parse_qs(urlparse(self.path).query)
+                target_date = query.get("date", ["all"])[0]
+                reg_rows = sheets_client.get_registrations_sheet_rows()
+                summary = parse_status_gender_summary(reg_rows, target_date=target_date)
+                overall = None
+                if not summary.is_overall:
+                    overall = parse_status_gender_summary(reg_rows, target_date="all")
+                msg_text = format_status_summary_report(summary, overall=overall)
+                self.send_json({
+                    "status": "ok",
+                    "text": msg_text,
+                    "date_label": summary.date_label,
+                    "is_overall": summary.is_overall,
+                    "total_applied": summary.total_applied,
+                    "female_applied": summary.female_applied,
+                    "total_arrived": summary.total_arrived,
+                    "female_arrived": summary.female_arrived,
+                    "total_returned": summary.total_returned,
+                    "female_returned": summary.female_returned,
+                    "total_dropped": summary.total_dropped,
+                    "female_dropped": summary.female_dropped
+                })
             except Exception as e:
                 self.send_json({"status": "error", "error": str(e)}, status=500)
             return
@@ -2756,6 +2883,52 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                     self.send_json({"status": "ok", "message": f"របាយការណ៍សង្ខេបប្រចាំខែត្រូវបានផ្ញើទៅ Telegram រួចរាល់! (Message ID: {msg_id})"})
             except Exception as e:
                 logger.error(f"Error in send-monthly: {e}", exc_info=True)
+                self.send_json({"status": "error", "error": str(e)}, status=500)
+            return
+
+        if self.path == "/api/actions/send-summary":
+            if not BOT_INSTANCE:
+                self.send_json({"status": "error", "error": "Bot instance not initialized yet"}, status=503)
+                return
+            try:
+                chat_id = config.REPORT_CHAT_ID
+                if not chat_id:
+                    self.send_json({"status": "error", "error": "REPORT_CHAT_ID is not set in Settings"}, status=400)
+                    return
+
+                target_date = "all"
+                if post_body:
+                    try:
+                        req_data = json.loads(post_body.decode("utf-8"))
+                        if req_data.get("date"):
+                            target_date = req_data["date"].strip()
+                    except Exception:
+                        pass
+
+                from src.parser import parse_status_gender_summary
+                from src.report_builder import format_status_summary_report
+
+                reg_rows = sheets_client.get_registrations_sheet_rows()
+                summary = parse_status_gender_summary(reg_rows, target_date=target_date)
+                overall = None
+                if not summary.is_overall:
+                    overall = parse_status_gender_summary(reg_rows, target_date="all")
+                msg_text = format_status_summary_report(summary, overall=overall)
+
+                async def _send_s():
+                    msg = await BOT_INSTANCE.send_message(
+                        chat_id=chat_id,
+                        text=msg_text,
+                        parse_mode="HTML"
+                    )
+                    storage.log_report_sent("MANUAL_SUMMARY", summary.date_label, message_id=msg.message_id)
+                    return msg.message_id
+
+                future = run_async_coro(_send_s())
+                msg_id = future.result(timeout=15)
+                self.send_json({"status": "ok", "message": f"របាយការណ៍សង្ខេប ({summary.date_label}) ត្រូវបានផ្ញើទៅ Telegram រួចរាល់! (Message ID: {msg_id})"})
+            except Exception as e:
+                logger.error(f"Error in send-summary: {e}", exc_info=True)
                 self.send_json({"status": "error", "error": str(e)}, status=500)
             return
 

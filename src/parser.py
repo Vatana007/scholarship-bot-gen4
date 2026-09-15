@@ -39,6 +39,19 @@ class HistoricalReportData:
     total_female: int = 0
     total_female_dropped: int = 0
 
+@dataclass
+class StatusGenderSummary:
+    date_label: str
+    total_applied: int = 0
+    female_applied: int = 0
+    total_arrived: int = 0
+    female_arrived: int = 0
+    total_returned: int = 0
+    female_returned: int = 0
+    total_dropped: int = 0
+    female_dropped: int = 0
+    is_overall: bool = False
+
 def parse_int_safe(val: str, default: int = 0) -> int:
     if not val:
         return default
@@ -593,6 +606,7 @@ def parse_student_registrations(reg_rows: list[list[str]]) -> list[dict]:
     pob_col = 12    # Col M ('ខេត្តកំណើត' - Province only)
     skill_col = 15  # Col P
     time_col = 35   # Col AJ ('កាលបរិច្ឆេទដាក់ពាក្យ')
+    status_col = 86 # Col CI ('ស្ថានភាពមកដល់')
 
     for idx, h in enumerate(header):
         h_clean = h.strip()
@@ -610,6 +624,8 @@ def parse_student_registrations(reg_rows: list[list[str]]) -> list[dict]:
             skill_col = idx
         elif h_clean == "កាលបរិច្ឆេទដាក់ពាក្យ" or idx == 35:
             time_col = idx
+        elif "ស្ថានភាពមកដល់" in h_clean or idx == 86:
+            status_col = idx
 
     students = []
     for row_idx, r in enumerate(reg_rows[1:], start=2):
@@ -625,6 +641,7 @@ def parse_student_registrations(reg_rows: list[list[str]]) -> list[dict]:
         pob = extract_province_only(raw_pob)
         skill = r[skill_col].strip() if len(r) > skill_col else ""
         registered_time = r[time_col].strip() if len(r) > time_col else ""
+        status = r[status_col].strip() if len(r) > status_col else ""
 
         clean_phone = phone.replace(" ", "")
         # Format phone with leading zero if 8 or 9 digits
@@ -643,9 +660,122 @@ def parse_student_registrations(reg_rows: list[list[str]]) -> list[dict]:
             "pob": pob,
             "skill": skill,
             "registered_time": registered_time,
+            "status": status,
             "row_index": row_idx,
             "key": student_key
         })
 
     return students
+
+def parse_status_gender_summary(reg_rows: list[list[str]], target_date: str = None) -> StatusGenderSummary:
+    """
+    Computes summary of scholarship applicants with gender breakdown:
+    - ដាក់ពាក្យសរុប (Total applicants)
+    - ស្រី (Female applicants)
+    - មកដល់ (Arrived)
+    - ស្រី (Female arrived)
+    - ទៅផ្ទះវិញ (Returned home)
+    - ស្រី (Female returned home)
+    - បោះបង់ (Dropped)
+    - ស្រី (Female dropped)
+    If target_date is 'all', 'សរុប', 'overall', or empty/None: returns all-time cumulative summary.
+    If target_date is specified: returns that date's summary.
+    """
+    from datetime import datetime
+    now = datetime.now()
+
+    is_overall = False
+    t_dmy = None
+    if not target_date or str(target_date).strip().lower() in ["all", "overall", "សរុប", "សរុបទាំងអស់"]:
+        is_overall = True
+        from src.report_builder import KHMER_MONTHS, to_khmer_num
+        m_kh = KHMER_MONTHS.get(now.month, str(now.month))
+        date_label = f"សរុបទាំងអស់ (គិតត្រឹមថ្ងៃទី {to_khmer_num(now.day)} ខែ{m_kh} ឆ្នាំ {to_khmer_num(now.year)})"
+    elif str(target_date).strip().lower() in ["today", "ថ្ងៃនេះ"]:
+        t_dmy = (now.day, now.month, now.year)
+        from src.report_builder import KHMER_MONTHS, to_khmer_num
+        m_kh = KHMER_MONTHS.get(now.month, str(now.month))
+        date_label = f"ថ្ងៃទី {to_khmer_num(now.day)} ខែ{m_kh} ឆ្នាំ {to_khmer_num(now.year)}"
+    else:
+        t_dmy = parse_date_dmy(str(target_date).strip())
+        from src.report_builder import KHMER_MONTHS, to_khmer_num
+        if t_dmy:
+            d, m, y = t_dmy
+            m_kh = KHMER_MONTHS.get(m, str(m))
+            date_label = f"ថ្ងៃទី {to_khmer_num(d)} ខែ{m_kh} ឆ្នាំ {to_khmer_num(y)}"
+        else:
+            date_label = str(target_date).strip()
+
+    if not reg_rows or len(reg_rows) < 2:
+        return StatusGenderSummary(date_label=date_label, is_overall=is_overall)
+
+    header = reg_rows[0]
+    name_col = 3
+    gender_col = 5
+    date_col = 85
+    status_col = 86
+
+    for idx, h in enumerate(header):
+        h_clean = h.strip()
+        if h_clean == "គោត្តនាម-នាម":
+            name_col = idx
+        elif h_clean == "ភេទ":
+            gender_col = idx
+        elif h_clean.lower() == "date":
+            date_col = idx
+        elif "ស្ថានភាពមកដល់" in h_clean or idx == 86:
+            status_col = idx
+
+    tot_app, f_app = 0, 0
+    tot_arr, f_arr = 0, 0
+    tot_ret, f_ret = 0, 0
+    tot_drp, f_drp = 0, 0
+
+    for r in reg_rows[1:]:
+        if len(r) <= name_col or not r[name_col].strip():
+            continue
+        if t_dmy:
+            d_str = r[date_col].strip() if len(r) > date_col else ""
+            r_dmy = parse_date_dmy(d_str)
+            if r_dmy != t_dmy:
+                continue
+
+        g = r[gender_col].strip() if len(r) > gender_col else ""
+        st = r[status_col].strip() if len(r) > status_col else ""
+        is_f = (g == "ស្រី")
+
+        tot_app += 1
+        if is_f:
+            f_app += 1
+
+        is_ok = "ok" in st.lower()
+        is_ret = "ទៅផ្ទះវិញ" in st
+        is_drp = "បោះបង់" in st
+
+        if is_ok:
+            tot_arr += 1
+            if is_f:
+                f_arr += 1
+        elif is_ret:
+            tot_ret += 1
+            if is_f:
+                f_ret += 1
+        elif is_drp:
+            tot_drp += 1
+            if is_f:
+                f_drp += 1
+
+    return StatusGenderSummary(
+        date_label=date_label,
+        total_applied=tot_app,
+        female_applied=f_app,
+        total_arrived=tot_arr,
+        female_arrived=f_arr,
+        total_returned=tot_ret,
+        female_returned=f_ret,
+        total_dropped=tot_drp,
+        female_dropped=f_drp,
+        is_overall=is_overall
+    )
+
 
