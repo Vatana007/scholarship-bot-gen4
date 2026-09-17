@@ -692,7 +692,7 @@ def parse_status_gender_summary(reg_rows: list[list[str]], target_date: str = No
         is_overall = True
         from src.report_builder import KHMER_MONTHS, to_khmer_num
         m_kh = KHMER_MONTHS.get(now.month, str(now.month))
-        date_label = f"សរុបទាំងអស់ (គិតត្រឹមថ្ងៃទី {to_khmer_num(now.day)} ខែ{m_kh} ឆ្នាំ {to_khmer_num(now.year)})"
+        date_label = f"ថ្ងៃទី {to_khmer_num(now.day)} ខែ{m_kh} ឆ្នាំ {to_khmer_num(now.year)}"
     elif str(target_date).strip().lower() in ["today", "ថ្ងៃនេះ"]:
         t_dmy = (now.day, now.month, now.year)
         from src.report_builder import KHMER_MONTHS, to_khmer_num

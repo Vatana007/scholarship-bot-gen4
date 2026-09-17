@@ -214,11 +214,17 @@ def format_categories_page(categories: list, page: int = 1, page_size: int = 8):
 
 def format_status_summary_report(summary: StatusGenderSummary, overall: StatusGenderSummary = None) -> str:
     lines = []
+    lines.append("📋 <b>របាយការណ៍សង្ខេបស្ថិតិអាហារូបករណ៍</b>")
     if summary.is_overall:
-        lines.append("📋 <b>របាយការណ៍សង្ខេបស្ថិតិអាហារូបករណ៍ (សរុបទាំងអស់)</b>")
-        lines.append(f"🗓 <b>គិតត្រឹម៖</b> {summary.date_label}")
+        raw_label = summary.date_label.strip()
+        if "សរុបទាំងអស់" in raw_label:
+            raw_label = raw_label.replace("សរុបទាំងអស់", "").replace("(", "").replace(")", "").strip()
+            if raw_label.startswith("៖"):
+                raw_label = raw_label.lstrip("៖").strip()
+        if not raw_label.startswith("គិតត្រឹម"):
+            raw_label = f"គិតត្រឹម{raw_label}"
+        lines.append(f"🗓 <b>សរុបទាំងអស់ ៖</b> {raw_label}")
     else:
-        lines.append("📋 <b>របាយការណ៍សង្ខេបស្ថិតិអាហារូបករណ៍</b>")
         lines.append(f"🗓 <b>កាលបរិច្ឆេទ៖</b> {summary.date_label}")
     lines.append(DIVIDER)
     lines.append(f"• <b>ដាក់ពាក្យសរុប៖</b> <b>{summary.total_applied}</b> នាក់ (ស្រី <b>{summary.female_applied}</b> នាក់)")
