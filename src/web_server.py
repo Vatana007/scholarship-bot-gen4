@@ -76,8 +76,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --text-dim: #64748b;
-            --font-km: 'Kantumruy Pro', 'Kantumruy', sans-serif;
-            --font-en: 'Plus Jakarta Sans', sans-serif;
+            --font-km: 'Khmer OS Siemreap', 'Siemreap', sans-serif;
+            --font-en: 'Times New Roman', 'Arial', sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
             --radius-lg: 16px;
             --radius-md: 12px;
@@ -1387,7 +1387,15 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                         <span>របាយការណ៍ប្រចាំខែ</span>
                     </div>
                 </div>
-                <div class="banner-actions">
+                <div class="banner-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <a href="/report" target="_blank" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                        <svg class="icon icon-sm"><use href="#icon-file-text"></use></svg>
+                        <span>មើលរបាយការណ៍ Web</span>
+                    </a>
+                    <a href="/api/report/pdf" download class="btn btn-success" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                        <svg class="icon icon-sm"><use href="#icon-download"></use></svg>
+                        <span>ទាញយក PDF</span>
+                    </a>
                     <button class="btn btn-primary" onclick="triggerAction('send-monthly')">
                         <svg class="icon icon-sm"><use href="#icon-send"></use></svg>
                         <span>ផ្ញើ PDF ទៅ Telegram</span>
@@ -1419,7 +1427,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                         <svg class="icon" style="color: #60a5fa;"><use href="#icon-book"></use></svg>
                         <span>ស្ថិតិតាមមុខជំនាញទាំងអស់</span>
                     </div>
-                    <span style="font-size: 0.78rem; color: var(--text-dim);" id="majors-count-badge">...</span>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.78rem; color: var(--text-dim);" id="majors-count-badge">...</span>
+                        <div style="display: inline-flex; border-radius: 6px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); padding: 2px;">
+                            <button id="btn-view-today" class="btn btn-sm" style="padding: 3px 8px; font-size: 0.75rem; border: none; background: transparent; color: var(--text-muted);" onclick="switchMajorsView('today')">ថ្ងៃនេះ</button>
+                            <button id="btn-view-month" class="btn btn-sm" style="padding: 3px 8px; font-size: 0.75rem; border: none; background: var(--primary); color: white;" onclick="switchMajorsView('month')">សរុបខែ</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Desktop Table View -->
@@ -1922,6 +1936,82 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             if (tabId === 'history') { loadHistoryData(); loadLogsData(); }
         }
 
+        let currentStats = null;
+        let currentMajorsView = 'month';
+
+        function switchMajorsView(mode) {
+            currentMajorsView = mode;
+            const btnToday = document.getElementById('btn-view-today');
+            const btnMonth = document.getElementById('btn-view-month');
+            if (btnToday && btnMonth) {
+                if (mode === 'today') {
+                    btnToday.style.background = 'var(--primary)';
+                    btnToday.style.color = 'white';
+                    btnMonth.style.background = 'transparent';
+                    btnMonth.style.color = 'var(--text-muted)';
+                } else {
+                    btnMonth.style.background = 'var(--primary)';
+                    btnMonth.style.color = 'white';
+                    btnToday.style.background = 'transparent';
+                    btnToday.style.color = 'var(--text-muted)';
+                }
+            }
+            renderMajorsList();
+        }
+
+        function renderMajorsList() {
+            if (!currentStats) return;
+            const today = currentStats.today;
+            const hist = currentStats.historical;
+            const cats = (currentMajorsView === 'today') ? today.categories : (hist.categories || today.categories);
+
+            const tbody = document.getElementById('majors-table-body');
+            const mlist = document.getElementById('majors-mobile-list');
+            if (!tbody || !mlist) return;
+            tbody.innerHTML = '';
+            mlist.innerHTML = '';
+
+            const activeCats = cats.filter(c => c.registered > 0);
+            const badgeEl = document.getElementById('majors-count-badge');
+            if (badgeEl) {
+                badgeEl.innerText = `${activeCats.length} ជំនាញមានទិន្នន័យ (${currentMajorsView === 'today' ? 'ថ្ងៃនេះ' : 'សរុបខែ'})`;
+            }
+
+            cats.forEach(c => {
+                const displayName = c.name.replace('(', '').replace(')', '').trim();
+                const numStyle = c.registered > 0 ? 'font-weight: 700; color: #38bdf8;' : 'color: var(--text-dim);';
+                tbody.innerHTML += `
+                    <tr>
+                        <td><b>${displayName}</b></td>
+                        <td style="text-align: right;"><span class="badge-count" style="${numStyle}">${c.registered}</span></td>
+                        <td style="text-align: right; color: #34d399;">${c.arrived || 0}</td>
+                        <td style="text-align: right; color: #f87171;">${c.dropped || 0}</td>
+                    </tr>
+                `;
+                mlist.innerHTML += `
+                    <div class="mobile-card-row">
+                        <div class="mobile-card-title">
+                            <span style="display: flex; align-items: center; gap: 6px;">
+                                <svg class="icon icon-sm" style="color: #38bdf8;"><use href="#icon-book"></use></svg>
+                                <span>${displayName}</span>
+                            </span>
+                            <span class="badge-count" style="${numStyle}">${c.registered} នាក់</span>
+                        </div>
+                        <div class="mobile-card-metrics">
+                            <span class="mobile-badge arr">
+                                <svg class="icon icon-sm"><use href="#icon-check-circle"></use></svg>
+                                <span>មកដល់: ${c.arrived || 0}</span>
+                            </span>
+                            <span class="mobile-badge drp">
+                                <svg class="icon icon-sm"><use href="#icon-x-circle"></use></svg>
+                                <span>បោះបង់: ${c.dropped || 0}</span>
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
         async function loadStatsData() {
             try {
                 const res = await fetch('/api/stats');
@@ -1930,6 +2020,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     if (data.is_paused !== undefined) {
                         updatePausedStateUI(data.is_paused);
                     }
+                    currentStats = data;
                     const today = data.today;
                     const hist = data.historical;
 
@@ -1937,29 +2028,46 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     document.getElementById('m-today-date').innerText = 'កាលបរិច្ឆេទ៖ ' + today.date_str;
                     document.getElementById('m-monthly-total').innerText = hist.grand_total + ' នាក់';
 
-                    // Update arrival chips
+                    // Update arrival chips (fallback to overall if today is 0)
                     if (document.getElementById('chip-arr')) {
-                        document.getElementById('chip-arr').innerText = today.total_arrived ?? 0;
-                        document.getElementById('chip-ret').innerText = today.total_returned ?? 0;
-                        document.getElementById('chip-drp').innerText = today.total_dropped ?? 0;
+                        const arrCnt = (today.grand_total > 0) ? (today.total_arrived ?? 0) : (hist.total_arrived ?? 0);
+                        const retCnt = (today.grand_total > 0) ? (today.total_returned ?? 0) : (hist.total_returned ?? 0);
+                        const drpCnt = (today.grand_total > 0) ? (today.total_dropped ?? 0) : (hist.total_dropped ?? 0);
+                        document.getElementById('chip-arr').innerText = arrCnt;
+                        document.getElementById('chip-ret').innerText = retCnt;
+                        document.getElementById('chip-drp').innerText = drpCnt;
                     }
 
-                    // Top major
+                    // Top major (fallback to monthly top if today is 0)
                     let topMajor = '-';
                     let topCount = 0;
+                    let isMonthlyTop = false;
+
                     today.categories.forEach(c => {
-                        if (c.registered > topCount) {
+                        if (c.registered > topCount && !['សរុបទាំងអស់', 'ប្រុសទាំងអស់', 'ស្រីទាំងអស់'].some(k => c.name.includes(k))) {
                             topCount = c.registered;
-                            topMajor = c.name;
+                            topMajor = c.name.replace('(', '').replace(')', '').trim();
                         }
                     });
-                    document.getElementById('m-top-major').innerText = topMajor;
-                    document.getElementById('m-top-major-count').innerText = topCount > 0 ? (topCount + ' នាក់') : 'គ្មាន';
 
-                    // Sources
+                    if (topCount === 0 && hist && hist.categories) {
+                        hist.categories.forEach(c => {
+                            if (c.registered > topCount && !['សរុបទាំងអស់', 'ប្រុសទាំងអស់', 'ស្រីទាំងអស់'].some(k => c.name.includes(k))) {
+                                topCount = c.registered;
+                                topMajor = c.name.replace('(', '').replace(')', '').trim();
+                                isMonthlyTop = true;
+                            }
+                        });
+                    }
+
+                    document.getElementById('m-top-major').innerText = topMajor;
+                    document.getElementById('m-top-major-count').innerText = topCount > 0 ? (topCount + ' នាក់' + (isMonthlyTop ? ' (សរុបខែ)' : ' (ថ្ងៃនេះ)')) : 'មិនទាន់មាន';
+
+                    // Sources: Show total sources if today is 0
+                    const srcSummary = (today.grand_total > 0) ? today.sources_summary : (hist.sources_summary || today.sources_summary);
                     const srcBox = document.getElementById('sources-container');
                     srcBox.innerHTML = '';
-                    for (const [src, cnt] of Object.entries(today.sources_summary)) {
+                    for (const [src, cnt] of Object.entries(srcSummary)) {
                         srcBox.innerHTML += `
                             <div class="source-box">
                                 <div style="margin-bottom: 4px; color: #38bdf8;">
@@ -1967,50 +2075,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                                 </div>
                                 <div class="source-name">${src}</div>
                                 <div class="source-num">${cnt}</div>
+                                <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 2px;">${today.grand_total > 0 ? 'ថ្ងៃនេះ' : 'សរុបខែ'}</div>
                             </div>
                         `;
                     }
 
                     // Majors table (Desktop) & Cards (Mobile)
-                    const tbody = document.getElementById('majors-table-body');
-                    const mlist = document.getElementById('majors-mobile-list');
-                    tbody.innerHTML = '';
-                    mlist.innerHTML = '';
-
-                    const activeCats = today.categories.filter(c => c.registered > 0);
-                    document.getElementById('majors-count-badge').innerText = activeCats.length + ' ជំនាញមានទិន្នន័យ';
-
-                    today.categories.forEach(c => {
-                        tbody.innerHTML += `
-                            <tr>
-                                <td><b>${c.name}</b></td>
-                                <td style="text-align: right;"><span class="badge-count">${c.registered}</span></td>
-                                <td style="text-align: right; color: #34d399;">${c.arrived}</td>
-                                <td style="text-align: right; color: #f87171;">${c.dropped}</td>
-                            </tr>
-                        `;
-                        mlist.innerHTML += `
-                            <div class="mobile-card-row">
-                                <div class="mobile-card-title">
-                                    <span style="display: flex; align-items: center; gap: 6px;">
-                                        <svg class="icon icon-sm" style="color: #38bdf8;"><use href="#icon-book"></use></svg>
-                                        <span>${c.name}</span>
-                                    </span>
-                                    <span class="badge-count">${c.registered} នាក់</span>
-                                </div>
-                                <div class="mobile-card-metrics">
-                                    <span class="mobile-badge arr">
-                                        <svg class="icon icon-sm"><use href="#icon-check-circle"></use></svg>
-                                        <span>មកដល់: ${c.arrived}</span>
-                                    </span>
-                                    <span class="mobile-badge drp">
-                                        <svg class="icon icon-sm"><use href="#icon-x-circle"></use></svg>
-                                        <span>បោះបង់: ${c.dropped}</span>
-                                    </span>
-                                </div>
-                            </div>
-                        `;
-                    });
+                    currentMajorsView = (today.grand_total > 0) ? 'today' : 'month';
+                    switchMajorsView(currentMajorsView);
                 }
             } catch (err) {
                 console.error(err);
@@ -2699,7 +2771,20 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                     },
                     "historical": {
                         "grand_total": hist_data.grand_total,
-                        "sources_summary": hist_data.sources_summary
+                        "sources_summary": hist_data.sources_summary,
+                        "total_arrived": getattr(hist_data, "total_arrived", 0),
+                        "total_returned": getattr(hist_data, "total_returned", 0),
+                        "total_dropped": getattr(hist_data, "total_dropped", 0),
+                        "categories": [
+                            {
+                                "name": c.name,
+                                "registered": c.registered,
+                                "female": getattr(c, "female", 0),
+                                "arrived": getattr(c, "arrived", 0),
+                                "dropped": getattr(c, "dropped", 0)
+                            }
+                            for c in hist_data.categories
+                        ]
                     }
                 })
             except Exception as e:
