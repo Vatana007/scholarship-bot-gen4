@@ -15,6 +15,7 @@ class CategoryItem:
     female: int = 0
     female_dropped: int = 0
     sources: dict[str, int] = field(default_factory=dict)
+    sources_female: dict[str, int] = field(default_factory=dict)
 
 @dataclass
 class TodayReportData:
@@ -39,6 +40,11 @@ class HistoricalReportData:
     total_dropped: int
     total_female: int = 0
     total_female_dropped: int = 0
+    sources_female_summary: dict[str, int] = field(default_factory=dict)
+    total_staying: int = 0
+    total_female_staying: int = 0
+    sources_staying: dict[str, int] = field(default_factory=dict)
+    sources_female_staying: dict[str, int] = field(default_factory=dict)
 
 @dataclass
 class StatusGenderSummary:
@@ -297,20 +303,32 @@ def parse_historical_sheet(rows: list[list[str]], reg_rows: list[list[str]] = No
     if len(rows[0]) > 8 and rows[0][8].strip():
         title = rows[0][8].strip()
 
-    # Calculate female, dropped, and female_dropped counts per skill from 'Part 2 -Registrations'
+    # Calculate female, dropped, staying, and per-source statistics from 'Part 2 -Registrations'
     female_by_skill = {}
+    female_by_skill_source = {}
     dropped_by_skill = {}
     female_dropped_by_skill = {}
     total_female = 0
     total_female_dropped = 0
+    total_staying = 0
+    total_female_staying = 0
+    
+    source_names = ["E-School", "ក្រសួងអប់រំ", "បងប្អូន", "DUC"]
+    sources_female_summary = {s: 0 for s in source_names}
+    sources_staying = {s: 0 for s in source_names}
+    sources_female_staying = {s: 0 for s in source_names}
+
     if reg_rows:
         students = parse_student_registrations(reg_rows)
         for s in students:
             g = s.get("gender", "").strip()
             sk = s.get("skill", "").strip()
             st = s.get("status", "").strip()
+            src = s.get("source", "").strip()
             is_female = (g == "ស្រី")
             is_dropped = ("បោះបង់" in st)
+            is_staying = ("ok" in st.lower())
+
             if is_female:
                 female_by_skill[sk] = female_by_skill.get(sk, 0) + 1
                 total_female += 1
@@ -319,6 +337,20 @@ def parse_historical_sheet(rows: list[list[str]], reg_rows: list[list[str]] = No
             if is_female and is_dropped:
                 female_dropped_by_skill[sk] = female_dropped_by_skill.get(sk, 0) + 1
                 total_female_dropped += 1
+
+            if src in source_names:
+                if is_female:
+                    sources_female_summary[src] += 1
+                    female_by_skill_source[(sk, src)] = female_by_skill_source.get((sk, src), 0) + 1
+                if is_staying:
+                    sources_staying[src] += 1
+                    if is_female:
+                        sources_female_staying[src] += 1
+
+            if is_staying:
+                total_staying += 1
+                if is_female:
+                    total_female_staying += 1
 
     # Discover all date columns from Row 2
     dates = []
@@ -330,7 +362,6 @@ def parse_historical_sheet(rows: list[list[str]], reg_rows: list[list[str]] = No
                 dates.append(date_val)
                 date_col_indices.append(col_idx)
 
-    source_names = ["E-School", "ក្រសួងអប់រំ", "បងប្អូន", "DUC"]
     sources_summary = {s: 0 for s in source_names}
     categories = []
 
@@ -344,7 +375,7 @@ def parse_historical_sheet(rows: list[list[str]], reg_rows: list[list[str]] = No
             continue
 
         col0 = row[0].strip() if len(row) > 0 else ""
-        if "សរុបទាំងអស់" in col0:
+        if any(k in col0 for k in ["សរុបទាំងអស់", "ប្រុសទាំងអស់", "ស្រីទាំងអស់"]):
             continue
         if not col0:
             continue
@@ -402,6 +433,17 @@ def parse_historical_sheet(rows: list[list[str]], reg_rows: list[list[str]] = No
                     cat_female_drp = cnt
                     break
 
+        # Match female count per source for this skill
+        cat_sources_female = {}
+        for s in source_names:
+            cnt = female_by_skill_source.get((col0, s), 0)
+            if cnt == 0:
+                for (sk, src_name), f_cnt in female_by_skill_source.items():
+                    if src_name == s and sk and (sk in col0 or col0 in sk):
+                        cnt = f_cnt
+                        break
+            cat_sources_female[s] = cnt
+
         categories.append(CategoryItem(
             name=col0,
             registered=final_reg,
@@ -410,7 +452,8 @@ def parse_historical_sheet(rows: list[list[str]], reg_rows: list[list[str]] = No
             dropped=cat_dropped,
             female=cat_female,
             female_dropped=cat_female_drp,
-            sources=cat_sources
+            sources=cat_sources,
+            sources_female=cat_sources_female
         ))
 
     return HistoricalReportData(
@@ -422,7 +465,12 @@ def parse_historical_sheet(rows: list[list[str]], reg_rows: list[list[str]] = No
         total_arrived=total_arrived,
         total_dropped=total_dropped,
         total_female=total_female,
-        total_female_dropped=max(total_female_dropped, sum(c.female_dropped for c in categories))
+        total_female_dropped=max(total_female_dropped, sum(c.female_dropped for c in categories)),
+        sources_female_summary=sources_female_summary,
+        total_staying=total_staying or total_arrived,
+        total_female_staying=total_female_staying,
+        sources_staying=sources_staying,
+        sources_female_staying=sources_female_staying
     )
 
 def get_available_dates(h_rows: list[list[str]]) -> list[dict]:
@@ -448,7 +496,7 @@ def get_available_dates(h_rows: list[list[str]]) -> list[dict]:
                 # Sum registrations for this column
                 day_total = 0
                 for r in h_rows[3:]:
-                    if r and any(c.strip() for c in r) and "សរុបទាំងអស់" not in r[0]:
+                    if r and any(c.strip() for c in r) and not any(k in r[0] for k in ["សរុបទាំងអស់", "ប្រុសទាំងអស់", "ស្រីទាំងអស់"]):
                         if col_idx < len(r):
                             day_total += parse_int_safe(r[col_idx])
 
@@ -519,7 +567,7 @@ def parse_date_report(h_rows: list[list[str]], today_rows: list[list[str]], targ
         if not r or not any(c.strip() for c in r):
             continue
         cat_name = r[0].strip()
-        if not cat_name or "សរុបទាំងអស់" in cat_name:
+        if not cat_name or any(k in cat_name for k in ["សរុបទាំងអស់", "ប្រុសទាំងអស់", "ស្រីទាំងអស់"]):
             continue
         reg = parse_int_safe(r[col_idx]) if col_idx < len(r) else 0
         arr = parse_int_safe(r[col_idx+1]) if col_idx+1 < len(r) else 0
@@ -608,6 +656,7 @@ def parse_student_registrations(reg_rows: list[list[str]]) -> list[dict]:
     pob_col = 12    # Col M ('ខេត្តកំណើត' - Province only)
     skill_col = 15  # Col P
     time_col = 35   # Col AJ ('កាលបរិច្ឆេទដាក់ពាក្យ')
+    source_col = 84 # Col CF ('មកកាន់សាលាតាមរយៈ')
     status_col = 86 # Col CI ('ស្ថានភាពមកដល់')
 
     for idx, h in enumerate(header):
@@ -626,6 +675,8 @@ def parse_student_registrations(reg_rows: list[list[str]]) -> list[dict]:
             skill_col = idx
         elif h_clean == "កាលបរិច្ឆេទដាក់ពាក្យ" or idx == 35:
             time_col = idx
+        elif "មកកាន់សាលា" in h_clean or idx == 84:
+            source_col = idx
         elif "ស្ថានភាពមកដល់" in h_clean or idx == 86:
             status_col = idx
 
@@ -643,6 +694,7 @@ def parse_student_registrations(reg_rows: list[list[str]]) -> list[dict]:
         pob = extract_province_only(raw_pob)
         skill = r[skill_col].strip() if len(r) > skill_col else ""
         registered_time = r[time_col].strip() if len(r) > time_col else ""
+        source = r[source_col].strip() if len(r) > source_col else ""
         status = r[status_col].strip() if len(r) > status_col else ""
 
         clean_phone = phone.replace(" ", "")
@@ -662,6 +714,7 @@ def parse_student_registrations(reg_rows: list[list[str]]) -> list[dict]:
             "pob": pob,
             "skill": skill,
             "registered_time": registered_time,
+            "source": source,
             "status": status,
             "row_index": row_idx,
             "key": student_key

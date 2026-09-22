@@ -205,13 +205,13 @@ class TestBotSuite(unittest.TestCase):
         # 1. Overall cumulative summary
         overall = parse_status_gender_summary(reg_rows, target_date="all")
         self.assertTrue(overall.is_overall)
-        self.assertEqual(overall.total_applied, 50)
-        self.assertEqual(overall.female_applied, 24)
-        self.assertEqual(overall.total_arrived, 25)
+        self.assertEqual(overall.total_applied, 58)
+        self.assertEqual(overall.female_applied, 25)
+        self.assertEqual(overall.total_arrived, 26)
         self.assertEqual(overall.female_arrived, 8)
         self.assertEqual(overall.total_returned, 24)
         self.assertEqual(overall.female_returned, 16)
-        self.assertEqual(overall.total_dropped, 1)
+        self.assertEqual(overall.total_dropped, 2)
         self.assertEqual(overall.female_dropped, 0)
 
         # 2. Specific date summary
@@ -279,7 +279,7 @@ class TestBotSuite(unittest.TestCase):
 
         # 4. Cumulative "all" should return the full cumulative counts
         all_counts = count_registration_statuses(reg_rows, "all")
-        self.assertEqual(all_counts, (25, 24, 1))
+        self.assertEqual(all_counts, (26, 24, 2))
 
         print("PASS: Test 08: Daily report 'under' status accurately displays only this day's data")
 

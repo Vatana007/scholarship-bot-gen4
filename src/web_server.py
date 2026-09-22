@@ -2531,7 +2531,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self.send_json({"status": "ok", "service": "telegram-bot"})
             return
 
-        if self.path == "/report/monthly":
+        if self.path in ["/report", "/report/monthly"] :
             try:
                 from src.pdf_generator import build_monthly_html
                 h_rows = sheets_client.get_historical_sheet_rows()

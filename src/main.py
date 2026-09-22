@@ -132,11 +132,11 @@ async def monthly_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if pdf_path and os.path.exists(pdf_path):
             now = datetime.now(TIMEZONE)
-            dropped_caption = f"បោះបង់ <b>{hist_data.total_dropped}</b> នាក់" if hist_data.total_dropped > 0 else ""
-            female_caption = f"ស្រី <b>{hist_data.total_female}</b> នាក់" if hist_data.total_female > 0 else ""
-            extra_parts = [p for p in [dropped_caption, female_caption] if p]
-            extra_str = f" ({' • '.join(extra_parts)})" if extra_parts else ""
-            caption = f"📈 <b>របាយការណ៍ស្ថិតិប្រចាំខែ (Monthly Report PDF)</b>\n🗓 <b>ខែ{KHMER_MONTHS.get(now.month, 'កញ្ញា')} ឆ្នាំ {to_khmer_num(now.year)}</b>\n👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{hist_data.grand_total} នាក់</b>{extra_str}"
+            caption = (
+                f"📈 <b>របាយការណ៍ស្ថិតិប្រចាំខែ - Monthly Report PDF</b>\n"
+                f"🗓 <b>ខែ{KHMER_MONTHS.get(now.month, 'កញ្ញា')} ឆ្នាំ {to_khmer_num(now.year)}</b>\n"
+                f"👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{hist_data.grand_total} នាក់</b> • ស្រី <b>{hist_data.total_female} នាក់</b> • បោះបង់៖ <b>{hist_data.total_dropped} នាក់</b> • ស្រី <b>{hist_data.total_female_dropped} នាក់</b>"
+            )
             await status_msg.delete()
             with open(pdf_path, "rb") as doc:
                 await update.effective_message.reply_document(
@@ -217,14 +217,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             hist_data = parse_historical_sheet(rows, reg_rows=reg_rows)
             pdf_path = generate_monthly_report_pdf(hist_data, force_refresh=True)
             now = datetime.now(TIMEZONE)
-            dropped_caption = f"បោះបង់ <b>{hist_data.total_dropped}</b> នាក់" if hist_data.total_dropped > 0 else ""
-            female_caption = f"ស្រី <b>{hist_data.total_female}</b> នាក់" if hist_data.total_female > 0 else ""
-            extra_parts = [p for p in [dropped_caption, female_caption] if p]
-            extra_str = f" ({' • '.join(extra_parts)})" if extra_parts else ""
             caption = (
-                f"📈 <b>របាយការណ៍ស្ថិតិប្រចាំខែ (Monthly Report PDF)</b>\n"
+                f"📈 <b>របាយការណ៍ស្ថិតិប្រចាំខែ - Monthly Report PDF</b>\n"
                 f"🗓 <b>ខែ{KHMER_MONTHS.get(now.month, 'កញ្ញា')} ឆ្នាំ {to_khmer_num(now.year)}</b>\n"
-                f"👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{hist_data.grand_total} នាក់</b>{extra_str}"
+                f"👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{hist_data.grand_total} នាក់</b> • ស្រី <b>{hist_data.total_female} នាក់</b> • បោះបង់៖ <b>{hist_data.total_dropped} នាក់</b> • ស្រី <b>{hist_data.total_female_dropped} នាក់</b>"
             )
             with open(pdf_path, "rb") as doc:
                 await query.message.reply_document(

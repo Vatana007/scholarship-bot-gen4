@@ -66,10 +66,16 @@ def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None
     # Calculate sources totals
     source_keys = ["E-School", "ក្រសួងអប់រំ", "បងប្អូន", "DUC"]
     source_totals = {s: 0 for s in source_keys}
+    source_female_totals = getattr(hist_data, "sources_female_summary", None) or {s: 0 for s in source_keys}
+    sources_staying = getattr(hist_data, "sources_staying", None) or {s: 0 for s in source_keys}
+    sources_female_staying = getattr(hist_data, "sources_female_staying", None) or {s: 0 for s in source_keys}
+    total_staying = getattr(hist_data, "total_staying", 0) or hist_data.total_arrived
+    total_female_staying = getattr(hist_data, "total_female_staying", 0)
     
     rows_html = ""
-    # Sort categories with highest registrations first
+    # Sort categories with highest registrations first and exclude summary lines
     sorted_cats = sorted(hist_data.categories, key=lambda c: c.registered, reverse=True)
+    sorted_cats = [c for c in sorted_cats if not any(k in c.name for k in ["សរុបទាំងអស់", "ប្រុសទាំងអស់", "ស្រីទាំងអស់"])]
     
     for idx, cat in enumerate(sorted_cats, 1):
         s_counts = [cat.sources.get(s, 0) for s in source_keys]
@@ -82,18 +88,26 @@ def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None
         dropped_style = "font-weight: 700; color: #b91c1c;" if cat.dropped > 0 else "color: #94a3b8;"
         female_dropped_style = "font-weight: 700; color: #be185d;" if cat.female_dropped > 0 else "color: #94a3b8;"
         
+        # Build source cells (Total & Female for each source)
+        source_cells = ""
+        for s in source_keys:
+            s_cnt = cat.sources.get(s, 0)
+            s_f_cnt = cat.sources_female.get(s, 0) if hasattr(cat, "sources_female") and cat.sources_female else 0
+            s_style = "font-weight: 600;" if s_cnt > 0 else "color: #94a3b8;"
+            s_f_style = "font-weight: 600; color: #be185d;" if s_f_cnt > 0 else "color: #94a3b8;"
+            source_cells += f"<td style='{s_style}'>{s_cnt}</td><td style='{s_f_style}'>{s_f_cnt}</td>"
+
+        cat_display_name = cat.name.replace("(", "").replace(")", "").strip()
+
         rows_html += f"""
         <tr {highlight}>
             <td style="text-align: center; color: #64748b;">{idx}</td>
-            <td class="major-name">{cat.name}</td>
+            <td class="major-name">{cat_display_name}</td>
             <td style="{num_style}">{cat.registered}</td>
             <td style="{female_style}">{cat.female}</td>
             <td style="{dropped_style}">{cat.dropped}</td>
             <td style="{female_dropped_style}">{cat.female_dropped}</td>
-            <td>{s_counts[0]}</td>
-            <td>{s_counts[1]}</td>
-            <td>{s_counts[2]}</td>
-            <td>{s_counts[3]}</td>
+            {source_cells}
         </tr>
         """
         
@@ -149,11 +163,11 @@ def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None
         table {{
             width: 100%;
             border-collapse: collapse;
-            font-size: 11px;
+            font-size: 10.5px;
         }}
         th, td {{
             border: 1px solid #334155;
-            padding: 5px 6px;
+            padding: 4px 3px;
             text-align: center;
         }}
         th {{
@@ -168,13 +182,13 @@ def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None
         td.major-name {{
             text-align: left;
             font-weight: 600;
-            padding-left: 8px;
+            padding-left: 6px;
         }}
         .total-row td {{
             font-weight: 700;
             background-color: #e0f2fe;
             color: #0369a1;
-            font-size: 12px;
+            font-size: 11.5px;
         }}
         .footer-signatures {{
             margin-top: 25px;
@@ -195,7 +209,7 @@ def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None
 <body>
     <div class="no-print" style="position: sticky; top: 0; background: #0f172a; color: white; padding: 10px 16px; margin: -10px -10px 16px -10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; border-radius: 0 0 8px 8px;">
         <div style="font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px;">
-            <span>📈 របាយការណ៍ស្ថិតិប្រចាំខែ (Live Web View)</span>
+            <span>📈 របាយការណ៍ស្ថិតិប្រចាំខែ - Live Web View</span>
         </div>
         <div style="display: flex; gap: 10px;">
             <button onclick="window.print()" style="background: #2563eb; color: white; border: none; padding: 7px 16px; border-radius: 6px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;">🖨️ បោះពុម្ព / Save as PDF</button>
@@ -209,41 +223,67 @@ def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None
 
     <div class="meta-info">
         <div>📊 កាលបរិច្ឆេទរបាយការណ៍៖ <b>{date_str_kh}</b></div>
-        <div>👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{hist_data.grand_total} នាក់</b> (ស្រី <b>{hist_data.total_female}</b> នាក់) • បោះបង់៖ <b>{hist_data.total_dropped} នាក់</b> (ស្រី <b>{hist_data.total_female_dropped}</b> នាក់)</div>
+        <div>👥 និស្សិតដាក់ពាក្យសរុប៖ <b>{hist_data.grand_total} នាក់</b> • ស្រី <b>{hist_data.total_female} នាក់</b> • បោះបង់៖ <b>{hist_data.total_dropped} នាក់</b> • ស្រី <b>{hist_data.total_female_dropped} នាក់</b></div>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th rowspan="2" style="width: 4%;">ល.រ</th>
-                <th rowspan="2" style="width: 28%;">ជំនាញ</th>
+                <th rowspan="2" style="width: 3.5%;">ល.រ</th>
+                <th rowspan="2" style="width: 23%;">ជំនាញ</th>
                 <th colspan="2" style="background-color: #dbeafe; color: #1e40af;">ចំនួនសរុប</th>
                 <th colspan="2" style="background-color: #fee2e2; color: #b91c1c;">បោះបង់</th>
-                <th colspan="4" class="th-source">ប្រភព (Sources)</th>
+                <th colspan="2" class="th-source">E-School</th>
+                <th colspan="2" class="th-source">ក្រសួងអប់រំ</th>
+                <th colspan="2" class="th-source">បងប្អូន</th>
+                <th colspan="2" class="th-source">DUC</th>
             </tr>
             <tr>
-                <th style="width: 8%; background-color: #eff6ff; color: #1e3a8a;">សរុប</th>
-                <th style="width: 7%; background-color: #fce7f3; color: #9d174d;">ស្រី</th>
-                <th style="width: 7%; background-color: #fef2f2; color: #b91c1c;">សរុប</th>
-                <th style="width: 7%; background-color: #fce7f3; color: #9d174d;">ស្រី</th>
-                <th style="width: 7.25%;">E-School</th>
-                <th style="width: 7.25%;">ក្រសួងអប់រំ</th>
-                <th style="width: 7.25%;">បងប្អូន</th>
-                <th style="width: 7.25%;">DUC</th>
+                <th style="width: 5.5%; background-color: #eff6ff; color: #1e3a8a;">សរុប</th>
+                <th style="width: 4.5%; background-color: #fce7f3; color: #9d174d;">ស្រី</th>
+                <th style="width: 5.5%; background-color: #fef2f2; color: #b91c1c;">សរុប</th>
+                <th style="width: 4.5%; background-color: #fce7f3; color: #9d174d;">ស្រី</th>
+                <th style="width: 6.5%;">សរុប</th>
+                <th style="width: 5.5%; background-color: #fce7f3; color: #9d174d;">ស្រី</th>
+                <th style="width: 6.5%;">សរុប</th>
+                <th style="width: 5.5%; background-color: #fce7f3; color: #9d174d;">ស្រី</th>
+                <th style="width: 6.5%;">សរុប</th>
+                <th style="width: 5.5%; background-color: #fce7f3; color: #9d174d;">ស្រី</th>
+                <th style="width: 7.5%;">សរុប</th>
+                <th style="width: 6.5%; background-color: #fce7f3; color: #9d174d;">ស្រី</th>
             </tr>
         </thead>
         <tbody>
             {rows_html}
             <tr class="total-row">
-                <td colspan="2" style="text-align: center; font-size: 12px;">សរុបទាំងអស់ (Grand Total)</td>
-                <td style="font-size: 13px; font-weight: 800;">{hist_data.grand_total}</td>
-                <td style="font-size: 13px; font-weight: 800; color: #be185d;">{hist_data.total_female}</td>
-                <td style="font-size: 13px; font-weight: 800; color: #b91c1c;">{hist_data.total_dropped}</td>
-                <td style="font-size: 13px; font-weight: 800; color: #be185d;">{hist_data.total_female_dropped}</td>
-                <td>{source_totals['E-School']}</td>
-                <td>{source_totals['ក្រសួងអប់រំ']}</td>
-                <td>{source_totals['បងប្អូន']}</td>
-                <td>{source_totals['DUC']}</td>
+                <td colspan="2" style="text-align: center; font-size: 11.5px;">សរុបទាំងអស់</td>
+                <td style="font-size: 12px; font-weight: 800;">{hist_data.grand_total}</td>
+                <td style="font-size: 12px; font-weight: 800; color: #be185d;">{hist_data.total_female}</td>
+                <td style="font-size: 12px; font-weight: 800; color: #b91c1c;">{hist_data.total_dropped}</td>
+                <td style="font-size: 12px; font-weight: 800; color: #be185d;">{hist_data.total_female_dropped}</td>
+                <td style="font-weight: 700;">{source_totals['E-School']}</td>
+                <td style="font-weight: 700; color: #be185d;">{source_female_totals.get('E-School', 0)}</td>
+                <td style="font-weight: 700;">{source_totals['ក្រសួងអប់រំ']}</td>
+                <td style="font-weight: 700; color: #be185d;">{source_female_totals.get('ក្រសួងអប់រំ', 0)}</td>
+                <td style="font-weight: 700;">{source_totals['បងប្អូន']}</td>
+                <td style="font-weight: 700; color: #be185d;">{source_female_totals.get('បងប្អូន', 0)}</td>
+                <td style="font-weight: 700;">{source_totals['DUC']}</td>
+                <td style="font-weight: 700; color: #be185d;">{source_female_totals.get('DUC', 0)}</td>
+            </tr>
+            <tr style="background-color: #f0fdf4; color: #166534; font-weight: 700;">
+                <td colspan="2" style="text-align: center; font-size: 11.5px;">សរុបអ្នកស្នាក់នៅ</td>
+                <td style="font-size: 12px; font-weight: 800; color: #15803d;">{total_staying}</td>
+                <td style="font-size: 12px; font-weight: 800; color: #be185d;">{total_female_staying}</td>
+                <td style="color: #94a3b8;">-</td>
+                <td style="color: #94a3b8;">-</td>
+                <td>{sources_staying.get('E-School', 0)}</td>
+                <td style="color: #be185d;">{sources_female_staying.get('E-School', 0)}</td>
+                <td>{sources_staying.get('ក្រសួងអប់រំ', 0)}</td>
+                <td style="color: #be185d;">{sources_female_staying.get('ក្រសួងអប់រំ', 0)}</td>
+                <td>{sources_staying.get('បងប្អូន', 0)}</td>
+                <td style="color: #be185d;">{sources_female_staying.get('បងប្អូន', 0)}</td>
+                <td>{sources_staying.get('DUC', 0)}</td>
+                <td style="color: #be185d;">{sources_female_staying.get('DUC', 0)}</td>
             </tr>
         </tbody>
     </table>

@@ -124,7 +124,9 @@ def format_monthly_report(hist_data: HistoricalReportData, target_month: int = N
     # Sources
     lines.append("📌 <b>ប្រភពចុះឈ្មោះសរុប :</b>")
     for src, count in hist_data.sources_summary.items():
-        lines.append(f"• {html.escape(src)}: <b>{count} នាក់</b>")
+        f_cnt = hist_data.sources_female_summary.get(src, 0) if hasattr(hist_data, "sources_female_summary") and hist_data.sources_female_summary else 0
+        f_str = f" (ស្រី: {f_cnt} នាក់)" if f_cnt > 0 else ""
+        lines.append(f"• {html.escape(src)}: <b>{count} នាក់</b>{f_str}")
     lines.append(DIVIDER)
 
     # Top categories
@@ -153,7 +155,13 @@ def format_monthly_report(hist_data: HistoricalReportData, target_month: int = N
     lines.append(DIVIDER)
     female_total_str = f" (ស្រី៖ <b>{hist_data.total_female} នាក់</b>)" if hist_data.total_female > 0 else ""
     lines.append(f"👥 <b>និស្សិតដាក់ពាក្យសរុប៖ {hist_data.grand_total} នាក់</b>{female_total_str}")
-    lines.append(f"✅ ចំនួនបានមកដល់៖ <b>{hist_data.total_arrived} នាក់</b>")
+    staying_cnt = getattr(hist_data, "total_staying", 0) or hist_data.total_arrived
+    female_staying_cnt = getattr(hist_data, "total_female_staying", 0)
+    if staying_cnt > 0:
+        f_stay_str = f" (ស្រី: <b>{female_staying_cnt} នាក់</b>)" if female_staying_cnt > 0 else ""
+        lines.append(f"🏠 <b>សរុបអ្នកស្នាក់នៅ៖ {staying_cnt} នាក់</b>{f_stay_str}")
+    else:
+        lines.append(f"✅ ចំនួនបានមកដល់៖ <b>{hist_data.total_arrived} នាក់</b>")
     lines.append(f"❌ ចំនួនបោះបង់៖ <b>{hist_data.total_dropped} នាក់</b>")
 
     return "\n".join(lines)
