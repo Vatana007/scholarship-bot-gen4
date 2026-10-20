@@ -1675,6 +1675,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                                 <input type="text" class="form-input" id="cfg-DAILY_REPORT_TIME" name="DAILY_REPORT_TIME">
                             </div>
                             <div class="form-group">
+                                <label class="form-label">ម៉ោងផ្ញើរបាយការណ៍សង្ខេប (Summary Time)</label>
+                                <div class="form-hint">ទម្រង់ 24h ម៉ោង:នាទី (ឧ. 16:30 សម្រាប់ 4:30 PM)</div>
+                                <input type="text" class="form-input" id="cfg-SUMMARY_REPORT_TIME" name="SUMMARY_REPORT_TIME">
+                            </div>
+                            <div class="form-group">
                                 <label class="form-label">ថ្ងៃ និងម៉ោងផ្ញើប្រចាំខែ (Monthly)</label>
                                 <div class="form-hint">ថ្ងៃទី (ឧ. 1) និងម៉ោង (ឧ. 08:00)</div>
                                 <div style="display: flex; gap: 8px;">
@@ -2839,7 +2844,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 for k, v in new_settings.items():
                     storage.set_setting(k, v)
                 config.apply_runtime_settings(new_settings)
-                if SCHEDULER_INSTANCE and any(k in new_settings for k in ["DAILY_REPORT_TIME", "MONTHLY_REPORT_TIME", "MONTHLY_REPORT_DAY", "TIMEZONE"]):
+                if SCHEDULER_INSTANCE and any(k in new_settings for k in ["DAILY_REPORT_TIME", "SUMMARY_REPORT_TIME", "MONTHLY_REPORT_TIME", "MONTHLY_REPORT_DAY", "TIMEZONE"]):
                     SCHEDULER_INSTANCE.reschedule()
                 self.send_json({"status": "ok", "message": "Settings saved successfully"})
             except Exception as e:

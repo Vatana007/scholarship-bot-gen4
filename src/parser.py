@@ -58,6 +58,8 @@ class StatusGenderSummary:
     total_dropped: int = 0
     female_dropped: int = 0
     is_overall: bool = False
+    sources_summary: dict[str, int] = field(default_factory=dict)
+    sources_all: dict[str, int] = field(default_factory=dict)
 
 def parse_int_safe(val: str, default: int = 0) -> int:
     if not val:
@@ -125,7 +127,7 @@ def count_registration_statuses(reg_rows: list[list[str]], target_date: str = No
 
     header = reg_rows[0]
     name_col = 3 # Col D
-    status_col = 86 # Col CI
+    status_col = 86
     date_col = 85 # Col CH
 
     for idx, h in enumerate(header):
@@ -769,6 +771,7 @@ def parse_status_gender_summary(reg_rows: list[list[str]], target_date: str = No
     gender_col = 5
     date_col = 85
     status_col = 86
+    source_col = 84
 
     for idx, h in enumerate(header):
         h_clean = h.strip()
@@ -780,6 +783,12 @@ def parse_status_gender_summary(reg_rows: list[list[str]], target_date: str = No
             date_col = idx
         elif "ស្ថានភាពមកដល់" in h_clean or idx == 86:
             status_col = idx
+        elif "មកកាន់សាលា" in h_clean or "តាមរយៈ" in h_clean or idx == 84:
+            source_col = idx
+
+    source_order = ["DUC", "E-School", "ក្រសួងអប់រំ", "បងប្អូន"]
+    sources_summary = {s: 0 for s in source_order}
+    sources_all = {s: 0 for s in source_order}
 
     tot_app, f_app = 0, 0
     tot_arr, f_arr = 0, 0
@@ -789,11 +798,30 @@ def parse_status_gender_summary(reg_rows: list[list[str]], target_date: str = No
     for r in reg_rows[1:]:
         if len(r) <= name_col or not r[name_col].strip():
             continue
+
+        raw_src = r[source_col].strip() if len(r) > source_col else ""
+        if raw_src.upper() == "DUC":
+            src_norm = "DUC"
+        elif raw_src.lower() in ["e-school", "eschool", "e - school"]:
+            src_norm = "E-School"
+        elif "ក្រសួង" in raw_src:
+            src_norm = "ក្រសួងអប់រំ"
+        elif "បងប្អូន" in raw_src:
+            src_norm = "បងប្អូន"
+        else:
+            src_norm = raw_src
+
+        if src_norm:
+            sources_all[src_norm] = sources_all.get(src_norm, 0) + 1
+
         if t_dmy:
             d_str = r[date_col].strip() if len(r) > date_col else ""
             r_dmy = parse_date_dmy(d_str)
             if r_dmy != t_dmy:
                 continue
+
+        if src_norm:
+            sources_summary[src_norm] = sources_summary.get(src_norm, 0) + 1
 
         g = r[gender_col].strip() if len(r) > gender_col else ""
         st = r[status_col].strip() if len(r) > status_col else ""
@@ -830,7 +858,9 @@ def parse_status_gender_summary(reg_rows: list[list[str]], target_date: str = No
         female_returned=f_ret,
         total_dropped=tot_drp,
         female_dropped=f_drp,
-        is_overall=is_overall
+        is_overall=is_overall,
+        sources_summary=sources_summary,
+        sources_all=sources_all
     )
 
 

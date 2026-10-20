@@ -24,6 +24,14 @@ class BotScheduler:
         except Exception:
             daily_hour, daily_minute = 17, 0
 
+        # Parse Summary Report Time (default 16:30 / 4:30 PM)
+        try:
+            sh, sm = config.SUMMARY_REPORT_TIME.split(":")
+            summary_hour = int(sh)
+            summary_minute = int(sm)
+        except Exception:
+            summary_hour, summary_minute = 16, 30
+
         # Parse Monthly Report Time (e.g. 08:00)
         try:
             mh, mm = config.MONTHLY_REPORT_TIME.split(":")
@@ -41,6 +49,16 @@ class BotScheduler:
             replace_existing=True
         )
         logger.info(f"Scheduled Daily Report at {daily_hour:02d}:{daily_minute:02d} ({config.TIMEZONE}).")
+
+        # Schedule Summary Job (e.g. 16:30 / 4:30 PM everyday)
+        self.scheduler.add_job(
+            self.send_summary_scheduled_report,
+            trigger=CronTrigger(hour=summary_hour, minute=summary_minute, timezone=config.TIMEZONE),
+            id="summary_report_job",
+            name="Daily Summary Report",
+            replace_existing=True
+        )
+        logger.info(f"Scheduled Summary Report at {summary_hour:02d}:{summary_minute:02d} ({config.TIMEZONE}).")
 
         # Schedule Monthly Job (e.g. 1st of every month at 08:00)
         self.scheduler.add_job(
@@ -94,6 +112,47 @@ class BotScheduler:
             logger.info(f"Scheduled daily report sent successfully (Message ID: {msg.message_id}).")
         except Exception as e:
             logger.error(f"Error sending scheduled daily report: {e}")
+
+    async def send_summary_scheduled_report(self):
+        if self.storage.get_setting("bot_paused") == "true":
+            logger.info("Bot auto-reports are paused. Skipping scheduled summary report.")
+            return
+
+        if not config.REPORT_CHAT_ID:
+            logger.warning("REPORT_CHAT_ID not configured; skipping summary report.")
+            return
+
+        today_key = datetime.now(config.TIMEZONE).strftime("%Y-%m-%d")
+        if self.storage.is_report_sent("SUMMARY", today_key):
+            logger.info(f"Summary report for {today_key} already sent. Skipping.")
+            return
+
+        logger.info(f"Triggering scheduled summary report for {today_key}...")
+        try:
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            from src.parser import parse_status_gender_summary
+            from src.report_builder import format_status_summary_report
+
+            reg_rows = self.sheets_client.get_registrations_sheet_rows()
+            summary = parse_status_gender_summary(reg_rows, target_date="all")
+            text = format_status_summary_report(summary)
+            markup = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("🔄 ធ្វើបច្ចុប្បន្នភាព", callback_data="action_sum_all"),
+                    InlineKeyboardButton("📊 របាយការណ៍ពេញ", callback_data="action_today")
+                ]
+            ])
+
+            msg = await self.bot.send_message(
+                chat_id=config.REPORT_CHAT_ID,
+                text=text,
+                parse_mode="HTML",
+                reply_markup=markup
+            )
+            self.storage.log_report_sent("SUMMARY", today_key, message_id=msg.message_id)
+            logger.info(f"Scheduled summary report sent successfully (Message ID: {msg.message_id}).")
+        except Exception as e:
+            logger.error(f"Error sending scheduled summary report: {e}")
 
     async def send_monthly_scheduled_report(self):
         if self.storage.get_setting("bot_paused") == "true":

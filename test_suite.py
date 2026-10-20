@@ -205,24 +205,28 @@ class TestBotSuite(unittest.TestCase):
         # 1. Overall cumulative summary
         overall = parse_status_gender_summary(reg_rows, target_date="all")
         self.assertTrue(overall.is_overall)
-        self.assertEqual(overall.total_applied, 58)
-        self.assertEqual(overall.female_applied, 25)
-        self.assertEqual(overall.total_arrived, 26)
-        self.assertEqual(overall.female_arrived, 8)
+        self.assertEqual(overall.total_applied, 72)
+        self.assertEqual(overall.female_applied, 35)
+        self.assertEqual(overall.total_arrived, 41)
+        self.assertEqual(overall.female_arrived, 16)
         self.assertEqual(overall.total_returned, 24)
         self.assertEqual(overall.female_returned, 16)
-        self.assertEqual(overall.total_dropped, 2)
+        self.assertEqual(overall.total_dropped, 4)
         self.assertEqual(overall.female_dropped, 0)
+        self.assertIn("DUC", overall.sources_summary)
+        self.assertIn("E-School", overall.sources_summary)
+        self.assertIn("ក្រសួងអប់រំ", overall.sources_summary)
+        self.assertIn("បងប្អូន", overall.sources_summary)
 
         # 2. Specific date summary
         date_sum = parse_status_gender_summary(reg_rows, target_date="10/Sep/2026")
         self.assertFalse(date_sum.is_overall)
         self.assertEqual(date_sum.total_applied, 19)
         self.assertEqual(date_sum.female_applied, 5)
-        self.assertEqual(date_sum.total_arrived, 8)
-        self.assertEqual(date_sum.female_arrived, 1)
-        self.assertEqual(date_sum.total_returned, 10)
-        self.assertEqual(date_sum.female_returned, 4)
+        self.assertEqual(date_sum.total_arrived, 10)
+        self.assertEqual(date_sum.female_arrived, 2)
+        self.assertEqual(date_sum.total_returned, 8)
+        self.assertEqual(date_sum.female_returned, 3)
         self.assertEqual(date_sum.total_dropped, 1)
         self.assertEqual(date_sum.female_dropped, 0)
 
@@ -262,16 +266,16 @@ class TestBotSuite(unittest.TestCase):
         self.assertIn("[ មកដល់: 0 | ត្រឡប់ទៅវិញ: 0 | បោះបង់: 0 ]", daily_html)
         self.assertNotIn("[ មកដល់: 18 | ត្រឡប់ទៅវិញ: 25 | បោះបង់: 1 ]", daily_html)
 
-        # 2. Specific date (10/Sep/2026) has (8, 10, 1)
+        # 2. Specific date (10/Sep/2026) has (10, 8, 1)
         d10_counts = count_registration_statuses(reg_rows, "10/Sep/2026")
-        self.assertEqual(d10_counts, (8, 10, 1))
+        self.assertEqual(d10_counts, (10, 8, 1))
 
         d10_data = parse_date_report(hist_rows, today_rows, "10/Sep/2026", reg_rows=reg_rows)
-        self.assertEqual(d10_data.total_arrived, 8)
-        self.assertEqual(d10_data.total_returned, 10)
+        self.assertEqual(d10_data.total_arrived, 10)
+        self.assertEqual(d10_data.total_returned, 8)
         self.assertEqual(d10_data.total_dropped, 1)
         d10_html = format_daily_report(d10_data)
-        self.assertIn("[ មកដល់: 8 | ត្រឡប់ទៅវិញ: 10 | បោះបង់: 1 ]", d10_html)
+        self.assertIn("[ មកដល់: 10 | ត្រឡប់ទៅវិញ: 8 | បោះបង់: 1 ]", d10_html)
 
         # 3. Specific date (14/Sep/2026) has (0, 4, 0)
         d14_counts = count_registration_statuses(reg_rows, "14/Sep/2026")
@@ -279,7 +283,7 @@ class TestBotSuite(unittest.TestCase):
 
         # 4. Cumulative "all" should return the full cumulative counts
         all_counts = count_registration_statuses(reg_rows, "all")
-        self.assertEqual(all_counts, (26, 24, 2))
+        self.assertEqual(all_counts, (41, 24, 4))
 
         print("PASS: Test 08: Daily report 'under' status accurately displays only this day's data")
 

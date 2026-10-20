@@ -45,6 +45,7 @@ except Exception:
     TIMEZONE = pytz.timezone("Asia/Phnom_Penh")
 
 DAILY_REPORT_TIME = os.getenv("DAILY_REPORT_TIME", "17:00").strip()
+SUMMARY_REPORT_TIME = os.getenv("SUMMARY_REPORT_TIME", "16:30").strip()
 MONTHLY_REPORT_DAY = int(os.getenv("MONTHLY_REPORT_DAY", "1").strip())
 MONTHLY_REPORT_TIME = os.getenv("MONTHLY_REPORT_TIME", "08:00").strip()
 
@@ -105,6 +106,7 @@ def get_runtime_config_dict() -> dict:
         "REGISTRATIONS_SHEET_GID": REGISTRATIONS_SHEET_GID,
         "TIMEZONE": TIMEZONE_STR,
         "DAILY_REPORT_TIME": DAILY_REPORT_TIME,
+        "SUMMARY_REPORT_TIME": SUMMARY_REPORT_TIME,
         "MONTHLY_REPORT_DAY": str(MONTHLY_REPORT_DAY),
         "MONTHLY_REPORT_TIME": MONTHLY_REPORT_TIME,
         "POLLING_INTERVAL_SECONDS": str(POLLING_INTERVAL_SECONDS),
@@ -116,7 +118,7 @@ def apply_runtime_settings(new_settings: dict):
     global REPORT_CHAT_ID, ALLOWED_CHAT_IDS, SPREADSHEET_ID, TODAY_SHEET_NAME
     global TODAY_SHEET_GID, HISTORICAL_SHEET_NAME, HISTORICAL_SHEET_GID
     global REGISTRATIONS_SHEET_NAME, REGISTRATIONS_SHEET_GID
-    global DAILY_REPORT_TIME, MONTHLY_REPORT_DAY, MONTHLY_REPORT_TIME, POLLING_INTERVAL_SECONDS, ADMIN_PIN
+    global DAILY_REPORT_TIME, SUMMARY_REPORT_TIME, MONTHLY_REPORT_DAY, MONTHLY_REPORT_TIME, POLLING_INTERVAL_SECONDS, ADMIN_PIN
 
     if "REPORT_CHAT_ID" in new_settings and new_settings["REPORT_CHAT_ID"].strip():
         try:
@@ -152,6 +154,9 @@ def apply_runtime_settings(new_settings: dict):
 
     if "DAILY_REPORT_TIME" in new_settings and new_settings["DAILY_REPORT_TIME"].strip():
         DAILY_REPORT_TIME = new_settings["DAILY_REPORT_TIME"].strip()
+
+    if "SUMMARY_REPORT_TIME" in new_settings and new_settings["SUMMARY_REPORT_TIME"].strip():
+        SUMMARY_REPORT_TIME = new_settings["SUMMARY_REPORT_TIME"].strip()
 
     if "MONTHLY_REPORT_DAY" in new_settings and new_settings["MONTHLY_REPORT_DAY"].strip():
         try:
