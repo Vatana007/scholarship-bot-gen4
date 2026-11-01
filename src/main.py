@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.request import HTTPXRequest
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 )
@@ -327,7 +328,19 @@ def main():
     # Start Web Dashboard & Health server for Render / Web access
     start_web_server_background()
 
-    app = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
+    request_config = HTTPXRequest(
+        connect_timeout=30.0,
+        read_timeout=30.0,
+        write_timeout=30.0,
+        pool_timeout=30.0
+    )
+    app = (
+        ApplicationBuilder()
+        .token(BOT_TOKEN)
+        .request(request_config)
+        .post_init(post_init)
+        .build()
+    )
 
     app.add_error_handler(error_handler)
     app.add_handler(CommandHandler(["start"], start_cmd))

@@ -243,15 +243,18 @@ def format_status_summary_report(summary: StatusGenderSummary, overall: StatusGe
 
     # Sources breakdown (all-time totals: DUC, E-School, ក្រសួងអប់រំ, បងប្អូន)
     srcs = summary.sources_all or summary.sources_summary
+    srcs_f = getattr(summary, "sources_female_all", None) or getattr(summary, "sources_female_summary", {})
     if srcs:
         lines.append("📌 <b>មកតាមរយៈ ៖</b>")
         order = ["DUC", "E-School", "ក្រសួងអប់រំ", "បងប្អូន"]
         for s_name in order:
             cnt = srcs.get(s_name, 0)
-            lines.append(f"• <b>{s_name} ៖</b> {cnt} នាក់")
+            f_cnt = srcs_f.get(s_name, 0) if srcs_f else 0
+            lines.append(f"• <b>{s_name} ៖</b> {cnt} នាក់ (ស្រី {f_cnt} នាក់)")
         for s_name, cnt in srcs.items():
             if s_name not in order and cnt > 0:
-                lines.append(f"• <b>{s_name} ៖</b> {cnt} នាក់")
+                f_cnt = srcs_f.get(s_name, 0) if srcs_f else 0
+                lines.append(f"• <b>{s_name} ៖</b> {cnt} នាក់ (ស្រី {f_cnt} នាក់)")
         lines.append(DIVIDER)
 
     if overall and not summary.is_overall:

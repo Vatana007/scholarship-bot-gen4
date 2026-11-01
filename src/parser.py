@@ -60,6 +60,16 @@ class StatusGenderSummary:
     is_overall: bool = False
     sources_summary: dict[str, int] = field(default_factory=dict)
     sources_all: dict[str, int] = field(default_factory=dict)
+    sources_female_summary: dict[str, int] = field(default_factory=dict)
+    sources_female_all: dict[str, int] = field(default_factory=dict)
+
+    @property
+    def sources_all_female(self) -> dict[str, int]:
+        return self.sources_female_all
+
+    @property
+    def sources_female(self) -> dict[str, int]:
+        return self.sources_female_summary
 
 def parse_int_safe(val: str, default: int = 0) -> int:
     if not val:
@@ -788,7 +798,9 @@ def parse_status_gender_summary(reg_rows: list[list[str]], target_date: str = No
 
     source_order = ["DUC", "E-School", "ក្រសួងអប់រំ", "បងប្អូន"]
     sources_summary = {s: 0 for s in source_order}
+    sources_female_summary = {s: 0 for s in source_order}
     sources_all = {s: 0 for s in source_order}
+    sources_female_all = {s: 0 for s in source_order}
 
     tot_app, f_app = 0, 0
     tot_arr, f_arr = 0, 0
@@ -811,8 +823,14 @@ def parse_status_gender_summary(reg_rows: list[list[str]], target_date: str = No
         else:
             src_norm = raw_src
 
+        g = r[gender_col].strip() if len(r) > gender_col else ""
+        st = r[status_col].strip() if len(r) > status_col else ""
+        is_f = (g == "ស្រី")
+
         if src_norm:
             sources_all[src_norm] = sources_all.get(src_norm, 0) + 1
+            if is_f:
+                sources_female_all[src_norm] = sources_female_all.get(src_norm, 0) + 1
 
         if t_dmy:
             d_str = r[date_col].strip() if len(r) > date_col else ""
@@ -822,10 +840,8 @@ def parse_status_gender_summary(reg_rows: list[list[str]], target_date: str = No
 
         if src_norm:
             sources_summary[src_norm] = sources_summary.get(src_norm, 0) + 1
-
-        g = r[gender_col].strip() if len(r) > gender_col else ""
-        st = r[status_col].strip() if len(r) > status_col else ""
-        is_f = (g == "ស្រី")
+            if is_f:
+                sources_female_summary[src_norm] = sources_female_summary.get(src_norm, 0) + 1
 
         tot_app += 1
         if is_f:
@@ -860,7 +876,9 @@ def parse_status_gender_summary(reg_rows: list[list[str]], target_date: str = No
         female_dropped=f_drp,
         is_overall=is_overall,
         sources_summary=sources_summary,
-        sources_all=sources_all
+        sources_all=sources_all,
+        sources_female_summary=sources_female_summary,
+        sources_female_all=sources_female_all
     )
 
 

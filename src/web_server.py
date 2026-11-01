@@ -2712,7 +2712,11 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                     "total_returned": summary.total_returned,
                     "female_returned": summary.female_returned,
                     "total_dropped": summary.total_dropped,
-                    "female_dropped": summary.female_dropped
+                    "female_dropped": summary.female_dropped,
+                    "sources_summary": summary.sources_summary,
+                    "sources_all": summary.sources_all,
+                    "sources_female_summary": getattr(summary, "sources_female_summary", {}),
+                    "sources_female_all": getattr(summary, "sources_female_all", {})
                 })
             except Exception as e:
                 self.send_json({"status": "error", "error": str(e)}, status=500)
