@@ -53,7 +53,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("📊 ស្ថិតិថ្ងៃនេះ", callback_data="action_today")
         ],
         [
-            InlineKeyboardButton("📅 របាយការណ៍ប្រចាំខែ", callback_data="action_monthly"),
+            InlineKeyboardButton("📅 របាយការណ៍សរុប", callback_data="action_monthly"),
             InlineKeyboardButton("📂 បញ្ជីមុខជំនាញទាំងអស់", callback_data="action_categories_p1")
         ],
         [
@@ -246,7 +246,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     InlineKeyboardButton("📊 ស្ថិតិថ្ងៃនេះ", callback_data="action_today")
                 ],
                 [
-                    InlineKeyboardButton("📅 របាយការណ៍ប្រចាំខែ", callback_data="action_monthly"),
+                    InlineKeyboardButton("📅 របាយការណ៍សរុប", callback_data="action_monthly"),
                     InlineKeyboardButton("📂 បញ្ជីមុខជំនាញទាំងអស់", callback_data="action_categories_p1")
                 ],
                 [

@@ -1384,7 +1384,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 <div class="banner-content">
                     <div class="banner-title">
                         <svg class="icon icon-md" style="color: #60a5fa;"><use href="#icon-file-text"></use></svg>
-                        <span>របាយការណ៍ប្រចាំខែ</span>
+                        <span>របាយការណ៍សរុប</span>
                     </div>
                 </div>
                 <div class="banner-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -1569,7 +1569,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                         <div>
                             <div class="action-title">
                                 <svg class="icon icon-sm" style="color: #34d399;"><use href="#icon-file-text"></use></svg>
-                                <span>ផ្ញើរបាយការណ៍ប្រចាំខែ</span>
+                                <span>ផ្ញើរបាយការណ៍សរុប</span>
                             </div>
                             <div class="action-desc">បង្កើតឯកសារ PDF តារាងស្អាត រួចផ្ញើចូល Telegram Group ភ្លាមៗ។</div>
                         </div>

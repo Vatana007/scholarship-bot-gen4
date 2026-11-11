@@ -117,7 +117,7 @@ def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None
 <html lang="km">
 <head>
     <meta charset="UTF-8">
-    <title>របាយការណ៍ប្រចាំខែ</title>
+    <title>របាយការណ៍សរុប</title>
     <link href="https://fonts.googleapis.com/css2?family=Siemreap&display=swap" rel="stylesheet">
     <style>
         @page {{
@@ -231,8 +231,8 @@ def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None
         </div>
     </div>
     <div class="header">
-        <div class="title">របាយការណ៍ប្រចាំខែ</div>
-        <div class="subtitle">ស្ថិតិសិស្ស-និស្សិតចុះឈ្មោះស្នើសុំអាហារូបករណ៍ • ខែ{month_name} ឆ្នាំ{to_khmer_num(year)}</div>
+        <div class="title">របាយការណ៍សរុប</div>
+        <div class="subtitle">ស្ថិតិសិស្ស-និស្សិតចុះឈ្មោះស្នើសុំអាហារូបករណ៍ • ឆ្នាំ{to_khmer_num(year)}</div>
     </div>
 
     <div class="meta-info">
