@@ -1891,7 +1891,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             let sanitized = String(raw).split('').map(c => {
                 const idx = khmerDigits.indexOf(c);
                 return idx !== -1 ? idx.toString() : c;
-            }).join('').replace(/[^\x00-\x7F]/g, '').trim();
+            }).join('').replace(/[^0-9a-zA-Z]/g, '').trim();
             return sanitized || '123456';
         }
 
