@@ -1885,9 +1885,21 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             setTimeout(() => { t.classList.remove('show'); }, 3500);
         }
 
+        function sanitizePin(raw) {
+            if (!raw) return '123456';
+            const khmerDigits = ['០','១','២','៣','៤','៥','៦','៧','៨','៩'];
+            let sanitized = String(raw).split('').map(c => {
+                const idx = khmerDigits.indexOf(c);
+                return idx !== -1 ? idx.toString() : c;
+            }).join('').replace(/[^\x00-\x7F]/g, '').trim();
+            return sanitized || '123456';
+        }
+
         function promptPin(callback) {
-            const savedPin = localStorage.getItem('bot_admin_pin');
+            let savedPin = localStorage.getItem('bot_admin_pin');
             if (savedPin) {
+                savedPin = sanitizePin(savedPin);
+                localStorage.setItem('bot_admin_pin', savedPin);
                 callback(savedPin);
                 return;
             }
@@ -1902,13 +1914,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         function closePinModal(pin) {
             document.getElementById('pin-modal').classList.remove('active');
             if (pendingPinCallback) {
-                if (pin) pendingPinCallback(pin);
+                if (pin) pendingPinCallback(sanitizePin(pin));
                 pendingPinCallback = null;
             }
         }
 
         function submitPinModal() {
-            const pin = document.getElementById('modal-pin-input').value.trim() || '123456';
+            const rawVal = document.getElementById('modal-pin-input').value.trim() || '123456';
+            const pin = sanitizePin(rawVal);
             localStorage.setItem('bot_admin_pin', pin);
             closePinModal(pin);
         }

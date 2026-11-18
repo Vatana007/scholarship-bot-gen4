@@ -67,7 +67,7 @@ def get_report_keyboard(current_view: str = "daily") -> InlineKeyboardMarkup:
 
 def format_daily_report(data: TodayReportData, delta_total: int = None, show_all: bool = False) -> str:
     lines = []
-    lines.append("📊 <b>របាយការណ៍ស្ថិតិប្រចាំថ្ងៃ</b>")
+    lines.append("📊 <b>របាយការណ៍ស្ថិតិអាហារូបករណ៍ជំនាន់ទី៤ប្រចាំថ្ងៃ</b>")
     lines.append(f"🗓 កាលបរិច្ឆេទ៖ {format_khmer_date(data.date_str)}")
     lines.append(DIVIDER)
 
@@ -222,7 +222,7 @@ def format_categories_page(categories: list, page: int = 1, page_size: int = 8):
 
 def format_status_summary_report(summary: StatusGenderSummary, overall: StatusGenderSummary = None) -> str:
     lines = []
-    lines.append("📋 <b>របាយការណ៍សង្ខេបស្ថិតិអាហារូបករណ៍</b>")
+    lines.append("📋 <b>របាយការណ៍សង្ខេបស្ថិតិអាហារូបករណ៍ជំនាន់ទី៤</b>")
     if summary.is_overall:
         raw_label = summary.date_label.strip()
         if "សរុបទាំងអស់" in raw_label:

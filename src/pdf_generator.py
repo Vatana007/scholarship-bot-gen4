@@ -232,7 +232,7 @@ def build_monthly_html(hist_data: HistoricalReportData, target_month: int = None
     </div>
     <div class="header">
         <div class="title">របាយការណ៍សរុប</div>
-        <div class="subtitle">ស្ថិតិសិស្ស-និស្សិតចុះឈ្មោះស្នើសុំអាហារូបករណ៍ • ឆ្នាំ{to_khmer_num(year)}</div>
+        <div class="subtitle">ស្ថិតិសិស្ស-និស្សិតចុះឈ្មោះស្នើសុំអាហារូបករណ៍ជំនាន់ទី៤ • ឆ្នាំ{to_khmer_num(year)}</div>
     </div>
 
     <div class="meta-info">

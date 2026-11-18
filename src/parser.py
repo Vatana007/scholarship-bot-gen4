@@ -205,7 +205,7 @@ def parse_today_sheet(rows: list[list[str]], reg_rows: list[list[str]] = None) -
     if not rows or len(rows) < 5:
         raise ValueError("សន្លឹកស្ថិតិថ្ងៃនឹង គ្មានទិន្នន័យគ្រប់គ្រាន់។")
 
-    title = rows[0][0].strip() if rows[0] else "របាយការណ៍ស្ថិតិប្រចាំថ្ងៃ"
+    title = rows[0][0].strip() if rows[0] else "របាយការណ៍ស្ថិតិអាហារូបករណ៍ជំនាន់ទី៤ប្រចាំថ្ងៃ"
 
     # Extract date header from Row 2
     date_str = ""
@@ -311,7 +311,7 @@ def parse_historical_sheet(rows: list[list[str]], reg_rows: list[list[str]] = No
     if not rows or len(rows) < 4:
         raise ValueError("សន្លឹកស្ថិតិប្រចាំថ្ងៃ គ្មានទិន្នន័យគ្រប់គ្រាន់។")
 
-    title = "របាយការណ៍ស្ថិតិប្រចាំថ្ងៃ (Historical)"
+    title = "របាយការណ៍ស្ថិតិអាហារូបករណ៍ជំនាន់ទី៤ប្រចាំថ្ងៃ"
     if len(rows[0]) > 8 and rows[0][8].strip():
         title = rows[0][8].strip()
 
